@@ -9,6 +9,9 @@ const initialState: LoginState = { error: null }
 
 export function LoginForm({ names, next }: { names: Record<Author, string>; next?: string }) {
   const [state, formAction, pending] = useActionState(login, initialState)
+  // Після досягнення ліміту наступний POST зустріне 429 у middleware,
+  // а відповідь у форматі 429 зламала б серверну дію на клієнті. Тому замикаємо тут.
+  const disabled = pending || state.blocked === true
 
   return (
     <form action={formAction} className="space-y-4">
@@ -40,7 +43,7 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
             type="submit"
             name="author"
             value="me"
-            disabled={pending}
+            disabled={disabled}
             className="h-12 rounded-card border border-ink bg-white px-3 text-[15px] font-semibold text-ink active:bg-concrete disabled:opacity-50"
           >
             Я — {names.me}
@@ -49,7 +52,7 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
             type="submit"
             name="author"
             value="dad"
-            disabled={pending}
+            disabled={disabled}
             className="h-12 rounded-card border border-ink bg-white px-3 text-[15px] font-semibold text-ink active:bg-concrete disabled:opacity-50"
           >
             Я — {names.dad}
@@ -62,7 +65,9 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
           role="alert"
           className="border-l-[3px] border-signal bg-white py-2 pl-3 text-[13px] text-ink"
         >
-          {state.error}
+          {state.blocked
+            ? `Забагато спроб входу. Спробуй за ${Math.ceil((state.retryAfterSeconds ?? 0) / 60)} хв.`
+            : state.error}
         </p>
       ) : null}
     </form>

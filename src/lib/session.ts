@@ -10,8 +10,10 @@ export const SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
 
 export const sessionCookieOptions = {
   httpOnly: true,
+  // На бойовому завжди https. У dev лишаємо false, інакше cookie не поставиться
+  // при перевірці з телефона по http://192.168.x.x — а застосунок мобільний-first.
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  sameSite: 'strict',
   path: '/',
   maxAge: SESSION_MAX_AGE_SECONDS,
 } as const
@@ -88,12 +90,26 @@ export async function readSessionToken(token: string | undefined): Promise<Autho
   }
 }
 
+/** Побайтове порівняння за сталий час: жодних ранніх виходів. */
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i += 1) diff |= a[i] ^ b[i]
+  return diff === 0
+}
+
 /**
- * Порівняння пароля за сталий час: хешуємо обидва рядки тим самим ключем
- * і звіряємо хеші, щоб довжина і збіг префікса нічого не підказували.
+ * Порівняння пароля за сталий час. Два рубежі:
+ * 1) звіряємо не самі рядки, а їхні HMAC — довжина і збіг префікса пароля
+ *    не впливають ні на що, бо дайджести завжди по 32 байти;
+ * 2) самі дайджести звіряємо побайтово без раннього виходу.
+ * Ніякого `===` на секретах.
  */
-export async function passwordMatches(candidate: string, expected: string | undefined): Promise<boolean> {
+export async function passwordMatches(
+  candidate: string,
+  expected: string | undefined,
+): Promise<boolean> {
   if (!expected) return false
   const [a, b] = await Promise.all([sign(candidate), sign(expected)])
-  return toBase64Url(a) === toBase64Url(b)
+  return timingSafeEqual(a, b)
 }

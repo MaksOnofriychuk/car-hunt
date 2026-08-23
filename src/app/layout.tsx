@@ -26,6 +26,8 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'Car Hunt',
   description: 'Трекер пошуку авто на AUTO.RIA',
+  // Третій рубіж проти індексації, поруч із X-Robots-Tag і robots.txt.
+  robots: { index: false, follow: false, nocache: true },
 }
 
 export const viewport: Viewport = {

@@ -169,6 +169,28 @@ export const events = pgTable(
   ],
 )
 
+/**
+ * Журнал спроб входу. Дві задачі: rate limit по IP і слід того, хто заходив.
+ * Пишеться і успіх, і невдача — без успіхів журнал не показав би, чи хтось таки зайшов.
+ */
+export const loginAttempts = pgTable(
+  'login_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** IP з проксі Vercel. Поза Vercel заголовкам довіряти не можна — там буде 'unknown'. */
+    ip: text('ip').notNull(),
+    userAgent: text('user_agent'),
+    /** Кого обрали у формі. null — форма прийшла без валідного вибору. */
+    author: text('author').$type<Author>(),
+    success: boolean('success').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // вікно rate limit: невдачі з однієї IP за останні 15 хвилин
+    index('login_attempts_ip_created_at_idx').on(t.ip, t.createdAt),
+  ],
+)
+
 export const priceHistory = pgTable(
   'price_history',
   {
@@ -216,3 +238,5 @@ export type Event = typeof events.$inferSelect
 export type NewEvent = typeof events.$inferInsert
 export type PricePoint = typeof priceHistory.$inferSelect
 export type NewPricePoint = typeof priceHistory.$inferInsert
+export type LoginAttempt = typeof loginAttempts.$inferSelect
+export type NewLoginAttempt = typeof loginAttempts.$inferInsert
