@@ -15,6 +15,20 @@
       "when": 1787493987816,
       "tag": "0001_charming_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787497484102,
+      "tag": "0002_shallow_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787497497827,
+      "tag": "0003_unusual_reavers",
+      "breakpoints": true
     }
   ]
 }

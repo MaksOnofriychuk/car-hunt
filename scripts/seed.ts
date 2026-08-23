@@ -28,6 +28,8 @@ const NOW = Date.now()
 
 /** Час N днів тому. */
 const daysAgo = (n: number) => new Date(NOW - n * DAY)
+/** Трохи раніше, ніж N днів тому — щоб події одного дня мали чіткий порядок. */
+const justBefore = (n: number) => new Date(NOW - n * DAY - 10 * 60_000)
 /** Дата (без часу) через N днів, у локальній зоні — для next_contact_at. */
 const inDays = (n: number) => {
   const d = new Date(NOW + n * DAY)
@@ -56,7 +58,7 @@ async function main() {
       id: SELLER_DEALER,
       name: 'Автосалон «Дніпро-Авто»',
       phones: ['+380503334455', '+380973334455'],
-      type: 'dealer',
+      type: 'showroom',
       notes: 'Майданчик. Ціна з наваром, авто пригнане з Польщі.',
       createdAt: daysAgo(4),
     },
@@ -65,7 +67,8 @@ async function main() {
   await db.insert(listings).values([
     {
       id: LISTING_PASSAT,
-      autoRiaId: 38123456,
+      source: 'autoria',
+      sourceId: '38123456',
       url: 'https://auto.ria.com/uk/auto_volkswagen_passat_38123456.html',
       status: 'active',
       sellerId: SELLER_IGOR,
@@ -88,7 +91,8 @@ async function main() {
     },
     {
       id: LISTING_OCTAVIA,
-      autoRiaId: 38891234,
+      source: 'autoria',
+      sourceId: '38891234',
       url: 'https://auto.ria.com/uk/auto_skoda_octavia_38891234.html',
       status: 'active',
       sellerId: SELLER_DEALER,
@@ -111,7 +115,8 @@ async function main() {
     },
     {
       id: LISTING_MEGANE,
-      autoRiaId: 37556677,
+      source: 'autoria',
+      sourceId: '37556677',
       url: 'https://auto.ria.com/uk/auto_renault_megane_37556677.html',
       status: 'active',
       sellerId: null, // продавця ще не заводили — так буває одразу після інгесту
@@ -148,7 +153,7 @@ async function main() {
       author: 'me',
       type: 'call',
       payload: { text: 'Взяв слухавку, авто в наявності', outcome: 'reached' },
-      createdAt: daysAgo(5),
+      createdAt: justBefore(5),
     },
     {
       listingId: LISTING_PASSAT,
@@ -169,7 +174,7 @@ async function main() {
       author: 'me',
       type: 'call',
       payload: { text: 'Запропонував 9000, думає', outcome: 'reached', offered_price: 9000 },
-      createdAt: daysAgo(1),
+      createdAt: justBefore(1),
     },
     {
       listingId: LISTING_PASSAT,
@@ -185,7 +190,7 @@ async function main() {
       author: 'dad',
       type: 'stage_change',
       payload: { stage: 'new' },
-      createdAt: daysAgo(4),
+      createdAt: justBefore(4),
     },
     {
       listingId: LISTING_OCTAVIA,
@@ -208,7 +213,7 @@ async function main() {
       author: 'me',
       type: 'stage_change',
       payload: { stage: 'new' },
-      createdAt: daysAgo(1),
+      createdAt: justBefore(1),
     },
     {
       listingId: LISTING_MEGANE,

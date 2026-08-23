@@ -1,6 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
 import {
-  bigint,
   boolean,
   date,
   index,
@@ -9,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 
@@ -22,6 +22,13 @@ export type Author = (typeof AUTHORS)[number]
 
 export const SELLER_TYPES = ['owner', 'dealer', 'showroom', 'unknown'] as const
 export type SellerType = (typeof SELLER_TYPES)[number]
+
+/**
+ * Звідки приїхало оголошення. Унікальність — по парі (source, source_id):
+ * id з різних сайтів можуть збігтись, і це не той самий автомобіль.
+ */
+export const SOURCE_NAMES = ['autoria', 'olx', 'telegram', 'manual'] as const
+export type SourceName = (typeof SOURCE_NAMES)[number]
 
 /** pending — щойно закинули посилання; failed — парсер не впорався, дані вводимо руками. */
 export const LISTING_STATUSES = ['pending', 'active', 'removed', 'failed'] as const
@@ -77,7 +84,12 @@ export const listings = pgTable(
   'listings',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    autoRiaId: bigint('auto_ria_id', { mode: 'number' }).notNull().unique(),
+    source: text('source').$type<SourceName>().notNull(),
+    /**
+     * Ідентифікатор усередині джерела: числовий id для autoria, хвіст посилання
+     * для olx, "{chat_id}:{message_id}" для telegram, згенерований uuid для manual.
+     */
+    sourceId: text('source_id').notNull(),
     url: text('url').notNull(),
     status: text('status').$type<ListingStatus>().notNull().default('pending'),
     sellerId: uuid('seller_id').references(() => sellers.id, { onDelete: 'set null' }),
@@ -124,6 +136,7 @@ export const listings = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => [
+    uniqueIndex('listings_source_source_id_idx').on(t.source, t.sourceId),
     index('listings_next_contact_at_idx').on(t.nextContactAt),
     index('listings_status_idx').on(t.status),
     // cron/refresh бере найдавніше оновлені неархівні авто

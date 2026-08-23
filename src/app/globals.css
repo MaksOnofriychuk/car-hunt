@@ -1,26 +1,63 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Палітра і шрифти — розділ «Візуальний напрямок» у SPEC.md.
+   Орієнтир: український номерний знак і приладова панель. */
+@theme {
+  --color-concrete: #eeefec; /* фон, холодний бетонний сірий */
+  --color-ink: #16181a; /* текст */
+  --color-plate: #0057b8; /* акцент, синій з номерного знака */
+  --color-signal: #ffd200; /* сигнальний — ЛИШЕ для «прострочено» */
+  --color-line: #d8dad5; /* рамки карток */
+  --color-muted: #6b7075; /* другорядний текст */
+
+  --font-sans: var(--font-sans-ui), 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: var(--font-mono-ui), ui-monospace, Menlo, monospace;
+
+  --radius-card: 4px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-concrete);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Без тіней і без зайвих анімацій — SPEC. Лишається тільки поява картки. */
+  *:focus-visible {
+    outline: 2px solid var(--color-plate);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-plate);
+    color: #fff;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Єдина анімація в застосунку: плавна поява картки після парсингу. */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card-in {
+  animation: card-in 160ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-in {
+    animation: none;
+  }
 }
