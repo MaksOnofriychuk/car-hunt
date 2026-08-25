@@ -18,7 +18,7 @@ export default async function SellersPage() {
   if (rows.length === 0) {
     return (
       <p className="rounded-card border border-line bg-white p-4 text-[14px] text-muted">
-        Продавців ще немає. Вони зʼявляться, коли парсер почне витягувати телефони з оголошень.
+        Продавців ще немає. Вони зʼявляться самі, коли розпарситься перше оголошення.
       </p>
     )
   }

@@ -4,7 +4,7 @@ import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
-import { LOGIN_MAX_FAILURES, loginBlockFor, recordLoginAttempt } from '@/db/login-attempts'
+import { loginBlockFor, recordLoginAttempt } from '@/db/login-attempts'
 import { clientIp } from '@/lib/request-ip'
 import {
   SESSION_COOKIE,
@@ -80,5 +80,3 @@ export async function logout() {
   store.delete(SESSION_COOKIE)
   redirect('/login')
 }
-
-export { LOGIN_MAX_FAILURES }

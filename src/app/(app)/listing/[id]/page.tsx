@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { EventFeed } from '@/components/EventFeed'
 import { PlateStrip } from '@/components/PlateStrip'
 import { PriceChart } from '@/components/PriceChart'
+import { SellerPhones } from '@/components/SellerPhones'
 import { StageBadge } from '@/components/StageBadge'
 import { getListingDetail } from '@/db/queries'
 import { requireSession } from '@/lib/auth'
@@ -12,6 +13,7 @@ import { cn } from '@/lib/cn'
 import { daysOnSale, formatDate } from '@/lib/dates'
 import { contactLabel, formatKm, formatUsd } from '@/lib/format'
 import { displayPhotos } from '@/lib/photos'
+import { sellerHint } from '@/lib/seller-hint'
 import { todayInKyiv } from '@/lib/dates'
 import { userNames } from '@/lib/users'
 
@@ -35,7 +37,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const detail = await getListingDetail(id)
   if (!detail) notFound()
 
-  const { listing, seller, stage, events, prices } = detail
+  const { listing, seller, sameAs, stage, events, prices } = detail
+  const hint = sellerHint(listing.snapshotRaw)
   const names = userNames()
   const photos = displayPhotos(listing)
   const contact = contactLabel(listing.nextContactAt, todayInKyiv())
@@ -163,27 +166,27 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </section>
       ) : null}
 
-      {seller ? (
-        <section className="rounded-card border border-line bg-white p-3">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-            Продавець
-          </span>
-          <p className="mt-1 text-[15px] font-semibold">{seller.name ?? 'Без імені'}</p>
-          <p className="text-[12px] text-muted">{SELLER_TYPES[seller.type] ?? seller.type}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {seller.phones.map((phone) => (
-              <a
-                key={phone}
-                href={`tel:${phone}`}
-                className="inline-flex h-9 items-center rounded-card border border-ink px-2.5 font-mono text-[13px] tabular-nums"
-              >
-                {phone}
-              </a>
-            ))}
-          </div>
-          {seller.notes ? <p className="mt-2 text-[13px] leading-snug">{seller.notes}</p> : null}
-        </section>
-      ) : null}
+      {/* Секція є завжди: номер вводиться руками, і без неї його нікуди вписати. */}
+      <section className="rounded-card border border-line bg-white p-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+          Продавець
+        </span>
+        <p className="mt-1 text-[15px] font-semibold">
+          {seller?.name ?? hint.name ?? 'Без імені'}
+        </p>
+        <p className="text-[12px] text-muted">
+          {SELLER_TYPES[seller?.type ?? hint.type ?? 'unknown']}
+        </p>
+
+        <SellerPhones
+          listingId={listing.id}
+          phones={seller?.phones ?? []}
+          masked={hint.phoneMasked}
+          sharedWith={sameAs}
+        />
+
+        {seller?.notes ? <p className="mt-2 text-[13px] leading-snug">{seller.notes}</p> : null}
+      </section>
 
       <section className="rounded-card border border-line bg-white p-3">
         <div className="flex gap-1.5">

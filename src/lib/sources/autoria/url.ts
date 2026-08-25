@@ -1,19 +1,13 @@
-import {
-  SourceNotReadyError,
-  findUrl,
-  type ListingRef,
-  type ListingSnapshot,
-  type ListingSource,
-} from './types'
+import { findUrl } from '../types'
 
-const HOST = 'auto\\.ria\\.com'
+export const AUTORIA_HOST = 'auto\\.ria\\.com'
 
 /**
  * Числовий id оголошення AUTO.RIA. Приймає і голе посилання, і переслане
  * повідомлення, у якому посилання десь усередині, і хвости з UTM.
  */
 export function extractAutoRiaId(input: string): string | null {
-  const url = findUrl(input, HOST)
+  const url = findUrl(input, AUTORIA_HOST)
   if (!url) return null
 
   // ?auto_id=38123456 — трапляється в мобільних і партнерських посиланнях
@@ -29,23 +23,7 @@ export function extractAutoRiaId(input: string): string | null {
   return tail ? tail[1] : null
 }
 
-export const autoRiaSource: ListingSource = {
-  name: 'autoria',
-  refreshable: true,
-
-  canHandle(input) {
-    return findUrl(input, HOST) !== null
-  },
-
-  extractRef(input) {
-    const id = extractAutoRiaId(input)
-    return id ? { source: 'autoria', id } : null
-  },
-
-  async fetch(): Promise<ListingSnapshot> {
-    // Реалізація — крок «Інгест і парсер»: дві стратегії, api|html за PARSER_SOURCE.
-    throw new SourceNotReadyError('autoria')
-  },
+/** Канонічна адреса сторінки оголошення за одним лише id. */
+export function autoRiaUrl(id: string): string {
+  return `https://auto.ria.com/uk/auto_${id}.html`
 }
-
-export type { ListingRef }

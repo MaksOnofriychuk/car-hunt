@@ -1,5 +1,6 @@
 import { ListingCard } from '@/components/ListingCard'
 import { PasteBar } from '@/components/PasteBar'
+import { PendingPoller } from '@/components/PendingPoller'
 import { getQueue, type QueueCard } from '@/db/queries'
 import { requireSession } from '@/lib/auth'
 import { cn } from '@/lib/cn'
@@ -15,6 +16,9 @@ export default async function QueuePage() {
   const names = userNames()
 
   const total = queue.overdue.length + queue.today.length + queue.later.length
+  const pending = [...queue.overdue, ...queue.today, ...queue.later].filter(
+    (card) => card.listing.status === 'pending',
+  ).length
 
   const sections = [
     { key: 'overdue', title: 'Прострочено', cards: queue.overdue, signal: true },
@@ -25,6 +29,7 @@ export default async function QueuePage() {
   return (
     <div className="space-y-5">
       <PasteBar />
+      <PendingPoller pending={pending} />
 
       {total === 0 ? (
         <p className="rounded-card border border-line bg-white p-4 text-[14px] text-muted">

@@ -70,15 +70,32 @@ export type EventPayload = {
 /*  Таблиці                                                                    */
 /* -------------------------------------------------------------------------- */
 
-export const sellers = pgTable('sellers', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name'),
-  /** Нормалізовані до +380XXXXXXXXX. По них склеюємо продавців між оголошеннями. */
-  phones: text('phones').array().notNull().default([]),
-  type: text('type').$type<SellerType>().notNull().default('unknown'),
-  notes: text('notes'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const sellers = pgTable(
+  'sellers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Де в продавця кабінет. NULL — продавця завели руками, джерела в нього немає. */
+    source: text('source').$type<SourceName>(),
+    /**
+     * Ідентифікатор продавця всередині джерела (для autoria — `userId` зі сторінки).
+     * **Основний ключ склейки**: він стабільний між оголошеннями і видно його
+     * без телефону. Телефон — додатковий ключ, на випадок коли id немає.
+     */
+    sourceUserId: text('source_user_id'),
+    name: text('name'),
+    /** Нормалізовані до +380XXXXXXXXX. Додатковий ключ склейки. */
+    phones: text('phones').array().notNull().default([]),
+    type: text('type').$type<SellerType>().notNull().default('unknown'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // NULL-и в унікальному індексі Postgres не конфліктують між собою, тому
+    // продавців без джерела (заведених руками) може бути скільки завгодно.
+    uniqueIndex('sellers_source_user_id_idx').on(t.source, t.sourceUserId),
+    index('sellers_phones_idx').using('gin', t.phones),
+  ],
+)
 
 export const listings = pgTable(
   'listings',
@@ -110,6 +127,12 @@ export const listings = pgTable(
     mileageKm: integer('mileage_km'),
     priceUsd: integer('price_usd'),
     city: text('city'),
+
+    /** Характеристики з оголошення. Раніше жили тільки всередині snapshot_raw. */
+    vin: text('vin'),
+    fuelType: text('fuel_type'),
+    transmission: text('transmission'),
+    color: text('color'),
     /** Коли оголошення зʼявилось на AUTO.RIA — з цього рахуємо «днів у продажу». */
     publishedAt: timestamp('published_at', { withTimezone: true }),
     /** Оригінальні URL з RIA — тільки для довідки, вони помруть разом з оголошенням. */
@@ -167,6 +190,26 @@ export const events = pgTable(
     index('events_listing_id_created_at_idx').on(t.listingId, t.createdAt),
     index('events_listing_id_type_idx').on(t.listingId, t.type),
   ],
+)
+
+/** Що саме ми смикали: api — developers.ria.com, page — сторінка, photo — файл з CDN. */
+export const REQUEST_KINDS = ['api', 'page', 'photo'] as const
+export type RequestKind = (typeof REQUEST_KINDS)[number]
+
+/**
+ * Журнал вихідних запитів до джерел. Потрібен як лічильник квоти AUTO.RIA
+ * (30/год і 1000/міс) — у памʼяті його тримати не можна, бо на Vercel процес
+ * не живе між запитами.
+ */
+export const sourceRequests = pgTable(
+  'source_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    source: text('source').$type<SourceName>().notNull(),
+    kind: text('kind').$type<RequestKind>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('source_requests_source_kind_created_at_idx').on(t.source, t.kind, t.createdAt)],
 )
 
 /**
@@ -238,5 +281,6 @@ export type Event = typeof events.$inferSelect
 export type NewEvent = typeof events.$inferInsert
 export type PricePoint = typeof priceHistory.$inferSelect
 export type NewPricePoint = typeof priceHistory.$inferInsert
+export type SourceRequest = typeof sourceRequests.$inferSelect
 export type LoginAttempt = typeof loginAttempts.$inferSelect
 export type NewLoginAttempt = typeof loginAttempts.$inferInsert

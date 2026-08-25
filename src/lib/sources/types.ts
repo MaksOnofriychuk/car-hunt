@@ -1,6 +1,6 @@
-import type { SourceName } from '@/db/schema'
+import type { SellerType, SourceName } from '@/db/schema'
 
-export type { SourceName }
+export type { SellerType, SourceName }
 
 /** Звідки оголошення і який у нього ідентифікатор усередині джерела. */
 export type ListingRef = {
@@ -21,10 +21,17 @@ export type ListingSnapshot = {
   priceUsd?: number | null
   city?: string | null
   publishedAt?: Date | null
+  vin?: string | null
+  fuelType?: string | null
+  transmission?: string | null
+  color?: string | null
   photos?: string[]
   descriptionText?: string | null
   sellerName?: string | null
   sellerPhones?: string[]
+  /** id продавця всередині джерела — основний ключ склейки продавців. */
+  sellerSourceId?: string | null
+  sellerType?: SellerType
   /** Сирий результат як є — лягає в snapshot_raw без обробки. */
   raw: unknown
   /** Повний HTML сторінки, якщо джерело його має. Стискається перед записом у html_raw. */
@@ -52,6 +59,17 @@ export interface ListingSource {
   readonly refreshable: boolean
 
   fetch(url: string, ref: ListingRef): Promise<ListingSnapshot>
+}
+
+/** Оголошення зникло з майданчика. Дані не чіпаємо, лише ставимо status: 'removed'. */
+export class ListingGoneError extends Error {
+  constructor(
+    readonly source: SourceName,
+    readonly url: string,
+  ) {
+    super(`Оголошення більше немає на ${source}: ${url}`)
+    this.name = 'ListingGoneError'
+  }
 }
 
 /** Джерело розпізнане, але читати оголошення воно ще не вміє. */

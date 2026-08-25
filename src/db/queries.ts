@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, arrayOverlaps, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import { db } from './index'
 import { events, listings, priceHistory, sellers } from './schema'
@@ -137,6 +137,8 @@ export async function getQueue(): Promise<Queue> {
 export type ListingDetail = {
   listing: Listing
   seller: Seller | null
+  /** Інші продавці з тим же номером — привід підозрювати, що це та сама людина. */
+  sameAs: { id: string; name: string | null }[]
   stage: Stage
   events: Event[]
   prices: PricePoint[]
@@ -163,9 +165,22 @@ export async function getListingDetail(id: string): Promise<ListingDetail | null
       .orderBy(asc(priceHistory.seenAt)),
   ])
 
-  const stages = await getStages([id])
+  const [stages, sameAs] = await Promise.all([getStages([id]), sellersSharingPhones(seller)])
 
-  return { listing, seller, stage: stages.get(id) ?? DEFAULT_STAGE, events: feed, prices }
+  return { listing, seller, sameAs, stage: stages.get(id) ?? DEFAULT_STAGE, events: feed, prices }
+}
+
+/**
+ * Номер записаний одразу в кількох продавців. Не зливаємо їх самі — просто
+ * показуємо попередження щоразу, поки хтось не розбереться руками.
+ */
+async function sellersSharingPhones(seller: Seller | null) {
+  if (!seller || seller.phones.length === 0) return []
+  const rows = await db
+    .select({ id: sellers.id, name: sellers.name })
+    .from(sellers)
+    .where(and(arrayOverlaps(sellers.phones, seller.phones), ne(sellers.id, seller.id)))
+  return rows
 }
 
 export type SellerRow = { seller: Seller; listingCount: number }
