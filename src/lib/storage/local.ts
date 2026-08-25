@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 
 import { assertSafeKey, type FileStorage } from './types'
@@ -40,6 +40,10 @@ export const localStorage: FileStorage = {
     } catch {
       return false
     }
+  },
+
+  async remove(key) {
+    await rm(pathFor(key), { force: true })
   },
 
   url(key) {

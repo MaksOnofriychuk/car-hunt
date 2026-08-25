@@ -41,7 +41,7 @@ function signingKey(secret: string, date: string): Buffer {
 
 function signedRequest(
   config: R2Config,
-  method: 'PUT' | 'GET' | 'HEAD',
+  method: 'PUT' | 'GET' | 'HEAD' | 'DELETE',
   key: string,
   body: Buffer | undefined,
   contentType?: string,
@@ -111,6 +111,16 @@ export function createR2Storage(config: R2Config): FileStorage {
       const { url, headers } = signedRequest(config, 'HEAD', key, undefined)
       const response = await fetch(url, { method: 'HEAD', headers })
       return response.ok
+    },
+
+    async remove(key) {
+      assertSafeKey(key)
+      const { url, headers } = signedRequest(config, 'DELETE', key, undefined)
+      const response = await fetch(url, { method: 'DELETE', headers })
+      // 404 — файла і так немає, це не помилка.
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`R2 DELETE ${key} → ${response.status}`)
+      }
     },
 
     url(key) {

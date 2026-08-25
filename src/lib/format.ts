@@ -32,6 +32,17 @@ export function formatKm(value: number | null | undefined): string {
   return value == null ? '—' : `${groupDigits(value)}${NBSP}км`
 }
 
+export function formatUah(value: number | null | undefined): string {
+  return value == null ? '—' : `${groupDigits(value)}${NBSP}₴`
+}
+
+/** Обʼєм двигуна: 2.36 → «2.36 л», 2 → «2 л». Нулі в хвості не потрібні. */
+export function formatLiters(value: number | null | undefined): string | null {
+  if (value == null) return null
+  const text = value.toFixed(2).replace(/\.?0+$/, '')
+  return `${text}${NBSP}л`
+}
+
 /** Давність події коротко: «сьогодні», «1 д», «12 д». */
 export function shortAgo(daysAgo: number): string {
   if (daysAgo <= 0) return 'сьогодні'

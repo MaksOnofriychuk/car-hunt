@@ -9,6 +9,9 @@ import { refForInput, sourceFor } from '@/lib/sources'
 import { QuotaExceededError } from '@/lib/sources/http'
 import { ListingGoneError, SourceNotReadyError } from '@/lib/sources/types'
 
+/** Версія розбору. Піднімати, коли парсер став діставати щось нове. */
+export const PARSER_VERSION = 2
+
 /**
  * Інгест — SPEC, «Інгест посилання». Головне правило: посилання не губиться
  * ніколи. Невідомий домен, збій парсера, вичерпана квота — картка все одно є.
@@ -84,11 +87,16 @@ export async function parseListing(listingId: string): Promise<void> {
         fuelType: snapshot.fuelType ?? listing.fuelType,
         transmission: snapshot.transmission ?? listing.transmission,
         color: snapshot.color ?? listing.color,
+        engineVolume: snapshot.engineVolume ?? listing.engineVolume,
+        driveType: snapshot.driveType ?? listing.driveType,
+        bodyType: snapshot.bodyType ?? listing.bodyType,
+        plateNumber: snapshot.plateNumber ?? listing.plateNumber,
+        priceUah: snapshot.priceUah ?? listing.priceUah,
         publishedAt: snapshot.publishedAt ?? listing.publishedAt,
         photos: snapshot.photos?.length ? snapshot.photos : listing.photos,
         snapshotRaw: snapshot.raw,
         parsedAt: new Date(),
-        parserVersion: 1,
+        parserVersion: PARSER_VERSION,
       })
       .where(eq(listings.id, listing.id))
 

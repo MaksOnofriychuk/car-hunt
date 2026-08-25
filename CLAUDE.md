@@ -17,6 +17,7 @@ Next.js 15 (App Router) · TS strict · Tailwind v4 · ESLint 9 · npm · Drizzl
 npm run dev      # localhost:3000; build під час dev затирає .next — не роби так
 npm run build    # разом з npm run lint і npm test має бути чисто
 npm run db:generate | db:migrate | db:studio | db:seed   # схема → БД → тестові авто
+npm run reparse  # перерозбір збережених html_raw новим парсером (--dry, --archive)
 ```
 Змінні — в `.env.local` (не комітиться), перелік у `.env.example`.
 
@@ -39,6 +40,11 @@ drizzle/            # міграції   scripts/ — seed
   `(source, source_id)`; нове джерело = файл + рядок у `src/lib/sources/index.ts`.
 - Архів назавжди: `snapshot_raw` + `html_raw` (gzip→base64) + `description_text` +
   фото в `photos_local`. Пишеться раз; `archived_at IS NULL` = неповний, cron добирає.
+- Фото — **лише з вузла галереї** `PhotoSliderTemplate` у `window.__PINIA__`:
+  регулярка по сторінці тягла чужі авто з блоків «схожі» та «інші пропозиції
+  продавця». Характеристики — теж зі стану, по id вузлів
+  (`src/lib/sources/autoria/specs.ts`); усе, під що немає колонки, живе
+  в `snapshot_raw.specs`.
 - Ліміт AUTO.RIA API: 30/год, 1000/міс — лічильник у `source_requests`, лише для
   `kind: 'api'`. Вичерпався — листинг лишається `pending`, cron добере. ≥2 с між запитами.
 - Продавці склеюються по `(source, source_user_id)`, телефон — додатковий ключ

@@ -1,3 +1,5 @@
+import { actionValues, byId, clean, textsIn } from './sdui'
+
 import type { SellerType } from '@/db/schema'
 
 /**
@@ -31,86 +33,6 @@ export const EMPTY_SELLER: AutoRiaSeller = {
   companyId: null,
   segment: null,
   type: 'unknown',
-}
-
-type JsonRecord = Record<string, unknown>
-
-/** Обхід SDUI-дерева: перший вузол, який підійшов під предикат. */
-function findNode(state: unknown, match: (node: JsonRecord) => boolean): JsonRecord | null {
-  const seen = new Set<unknown>()
-
-  const walk = (node: unknown, depth: number): JsonRecord | null => {
-    if (!node || typeof node !== 'object' || depth > 60 || seen.has(node)) return null
-    seen.add(node)
-
-    if (Array.isArray(node)) {
-      for (const item of node) {
-        const hit = walk(item, depth + 1)
-        if (hit) return hit
-      }
-      return null
-    }
-
-    const record = node as JsonRecord
-    if (match(record)) return record
-    for (const value of Object.values(record)) {
-      const hit = walk(value, depth + 1)
-      if (hit) return hit
-    }
-    return null
-  }
-
-  return walk(state, 0)
-}
-
-function byId(state: unknown, id: string | RegExp): JsonRecord | null {
-  const test = typeof id === 'string' ? (value: string) => value === id : (value: string) => id.test(value)
-  return findNode(state, (node) => typeof node.id === 'string' && test(node.id))
-}
-
-/** Усі текстові вузли всередині одного шматка дерева, згори вниз. */
-function textsIn(node: unknown, depth = 0, out: string[] = []): string[] {
-  if (!node || typeof node !== 'object' || depth > 20) return out
-  if (Array.isArray(node)) {
-    for (const item of node) textsIn(item, depth + 1, out)
-    return out
-  }
-  const record = node as JsonRecord
-  if (record.type === 'Text' && typeof record.content === 'string') out.push(record.content)
-  for (const value of Object.values(record)) textsIn(value, depth + 1, out)
-  return out
-}
-
-/**
- * `actionData.data` приходить масивом пар `[["userId","17339823"], …]`,
- * а `actionData.params` — тим самим набором, але вже обʼєктом. Зливаємо обидва.
- */
-function actionValues(node: JsonRecord | null): Record<string, string> {
-  const values: Record<string, string> = {}
-  const actionData = node?.actionData
-  if (!actionData || typeof actionData !== 'object') return values
-
-  const { data, params } = actionData as JsonRecord
-  if (Array.isArray(data)) {
-    for (const pair of data) {
-      if (Array.isArray(pair) && typeof pair[0] === 'string' && pair[1] != null) {
-        values[pair[0]] = String(pair[1])
-      }
-    }
-  }
-  if (params && typeof params === 'object' && !Array.isArray(params)) {
-    for (const [key, value] of Object.entries(params as JsonRecord)) {
-      if (values[key] === undefined && (typeof value === 'string' || typeof value === 'number')) {
-        values[key] = String(value)
-      }
-    }
-  }
-  return values
-}
-
-function clean(value: string | undefined): string | null {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
 }
 
 /**

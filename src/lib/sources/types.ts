@@ -25,6 +25,13 @@ export type ListingSnapshot = {
   fuelType?: string | null
   transmission?: string | null
   color?: string | null
+  /** Обʼєм двигуна в літрах: 2.36. */
+  engineVolume?: number | null
+  driveType?: string | null
+  bodyType?: string | null
+  plateNumber?: string | null
+  /** Ціна в гривні станом на парсинг — RIA показує обидві. */
+  priceUah?: number | null
   photos?: string[]
   descriptionText?: string | null
   sellerName?: string | null

@@ -1,21 +1,24 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { Description } from '@/components/Description'
 import { EventFeed } from '@/components/EventFeed'
 import { ListingActions } from '@/components/ListingActions'
 import { ArchiveToggle, ContactDate, TargetPrice } from '@/components/ListingFields'
+import { PhotoGallery } from '@/components/PhotoGallery'
 import { PlateStrip } from '@/components/PlateStrip'
 import { PriceChart } from '@/components/PriceChart'
 import { SellerPhones } from '@/components/SellerPhones'
+import { Specs } from '@/components/Specs'
 import { StageBadge } from '@/components/StageBadge'
 import { getListingDetail } from '@/db/queries'
 import { requireSession } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { daysOnSale, formatDate } from '@/lib/dates'
-import { contactLabel, formatKm, formatUsd } from '@/lib/format'
+import { contactLabel, formatKm, formatNumber, formatUah, formatUsd } from '@/lib/format'
 import { displayPhotos } from '@/lib/photos'
 import { sellerHint } from '@/lib/seller-hint'
+import { listingSpecs } from '@/lib/specs'
 import { todayInKyiv } from '@/lib/dates'
 import { userNames } from '@/lib/users'
 
@@ -40,6 +43,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const hint = sellerHint(listing.snapshotRaw)
   const names = userNames()
   const photos = displayPhotos(listing)
+  const specs = listingSpecs(listing.snapshotRaw)
   const contact = contactLabel(listing.nextContactAt, todayInKyiv())
 
   return (
@@ -48,34 +52,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         ← Черга
       </Link>
 
-      {photos.length > 0 ? (
-        <div>
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card border border-line bg-concrete">
-            <Image
-              src={photos[0]}
-              alt=""
-              fill
-              sizes="(max-width: 560px) 100vw, 560px"
-              className="object-cover"
-              priority
-            />
-          </div>
-          {photos.length > 1 ? (
-            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-              {photos.slice(1).map((photo) => (
-                <Image
-                  key={photo}
-                  src={photo}
-                  alt=""
-                  width={72}
-                  height={54}
-                  className="h-[54px] w-[72px] shrink-0 rounded-card border border-line object-cover"
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <PhotoGallery photos={photos} title={listing.title ?? 'Авто'} />
 
       <section className="rounded-card border border-line bg-white p-3">
         <h1 className="text-[19px] font-semibold leading-tight">
@@ -99,6 +76,11 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           >
             {formatUsd(listing.priceUsd)}
           </span>
+          {listing.priceUah ? (
+            <span className="font-mono text-[13px] leading-none tabular-nums text-muted">
+              {formatUah(listing.priceUah)}
+            </span>
+          ) : null}
           <StageBadge stage={stage} className="ml-auto" />
         </div>
 
@@ -119,6 +101,19 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           {listing.url}
         </a>
       </section>
+
+      <Specs listing={listing} specs={specs} />
+
+      {listing.descriptionText ? (
+        <section className="rounded-card border border-line bg-white p-3">
+          <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+            Опис від продавця
+          </h2>
+          <div className="mt-2">
+            <Description text={listing.descriptionText} />
+          </div>
+        </section>
+      ) : null}
 
       {/* Два поля, які редагуються в один тап — SPEC, «Інтерфейс». */}
       <section className="rounded-card border border-line bg-white p-3">
@@ -164,7 +159,19 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </p>
         <p className="text-[12px] text-muted">
           {SELLER_TYPES[seller?.type ?? hint.type ?? 'unknown']}
+          {specs.sellerRating ? ` · рейтинг ${specs.sellerRating} з 5` : null}
+          {specs.sellerReviews ? ` · ${formatNumber(specs.sellerReviews)} відгуків` : null}
         </p>
+        {specs.sellerOtherCars || specs.sellerSince ? (
+          <p className="text-[12px] text-muted">
+            {[
+              specs.sellerOtherCars ? `${formatNumber(specs.sellerOtherCars)} оголошень` : null,
+              specs.sellerSince,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        ) : null}
 
         <SellerPhones
           listingId={listing.id}

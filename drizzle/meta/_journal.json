@@ -57,6 +57,13 @@
       "when": 1787587184590,
       "tag": "0007_superb_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787642387902,
+      "tag": "0008_careless_shocker",
+      "breakpoints": true
     }
   ]
 }

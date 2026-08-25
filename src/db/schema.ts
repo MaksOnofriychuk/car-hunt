@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -133,6 +134,14 @@ export const listings = pgTable(
     fuelType: text('fuel_type'),
     transmission: text('transmission'),
     color: text('color'),
+    /** Літри: 2.36. numeric, бо 2.36 у float — це 2.359999999. */
+    engineVolume: numeric('engine_volume', { precision: 4, scale: 2, mode: 'number' }),
+    driveType: text('drive_type'),
+    bodyType: text('body_type'),
+    /** Держномер зі сторінки: «AI 8180 PP». */
+    plateNumber: text('plate_number'),
+    /** Ціна в гривні на момент парсингу. Історію ведемо тільки в доларах. */
+    priceUah: integer('price_uah'),
     /** Коли оголошення зʼявилось на AUTO.RIA — з цього рахуємо «днів у продажу». */
     publishedAt: timestamp('published_at', { withTimezone: true }),
     /** Оригінальні URL з RIA — тільки для довідки, вони помруть разом з оголошенням. */

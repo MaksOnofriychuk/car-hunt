@@ -1,7 +1,9 @@
 import * as cheerio from 'cheerio'
 
 import { extractPhotos } from './photos'
+import { allTexts } from './sdui'
 import { extractSeller, type AutoRiaSeller } from './seller'
+import { extractSpecs, priceUsdFromState, type AutoRiaSpecs } from './specs'
 import type { ListingSnapshot } from '../types'
 
 /**
@@ -11,8 +13,8 @@ import type { ListingSnapshot } from '../types'
  *   1. <script type="application/ld+json"> — назва, марка, модель, рік, пробіг,
  *      ціна, повний опис продавця, місто (з BreadcrumbList), VIN, паливо,
  *      коробка, колір
- *   2. window.__PINIA__ — стан сторінки; звідти дата публікації
- *      («Оголошення створене DD.MM.YYYY») і продавець (імʼя, id, тип)
+ *   2. window.__PINIA__ — стан сторінки: фото галереї, характеристики
+ *      (`specs.ts`), дата публікації і продавець (`seller.ts`)
  *   3. cheerio по DOM — останній рубіж, якщо перші два шари щось не дали
  */
 
@@ -135,29 +137,6 @@ export function piniaState(html: string): unknown {
   }
 }
 
-/** Усі текстові вузли SDUI — там лежить те, чого немає в структурованих полях. */
-function sduiTexts(state: unknown): string[] {
-  const texts: string[] = []
-  const seen = new Set<unknown>()
-
-  const walk = (node: unknown, depth: number) => {
-    if (!node || typeof node !== 'object' || depth > 40 || seen.has(node)) return
-    seen.add(node)
-
-    if (Array.isArray(node)) {
-      for (const item of node) walk(item, depth + 1)
-      return
-    }
-
-    const record = node as JsonRecord
-    if (record.type === 'Text' && typeof record.content === 'string') texts.push(record.content)
-    for (const value of Object.values(record)) walk(value, depth + 1)
-  }
-
-  walk(state, 0)
-  return texts
-}
-
 /** «Оголошення створене 09.08.2026» → Date. Опівдні, щоб не зʼїхати на добу. */
 function parseCreatedAt(texts: string[]): Date | null {
   for (const text of texts) {
@@ -170,13 +149,23 @@ function parseCreatedAt(texts: string[]): Date | null {
   return null
 }
 
-function fromPinia(state: unknown, seller: AutoRiaSeller): Draft {
+function fromPinia(state: unknown, seller: AutoRiaSeller, specs: AutoRiaSpecs): Draft {
   if (!state) return { ...EMPTY }
-  const texts = sduiTexts(state)
+
   return fillGaps(
     { ...EMPTY },
     {
-      publishedAt: parseCreatedAt(texts),
+      publishedAt: parseCreatedAt(allTexts(state)),
+      priceUsd: priceUsdFromState(state),
+      vin: specs.vin,
+      fuelType: specs.fuelType,
+      transmission: specs.transmission,
+      color: specs.color,
+      engineVolume: specs.engineVolume,
+      driveType: specs.driveType,
+      bodyType: specs.bodyType,
+      plateNumber: specs.plateNumber,
+      priceUah: specs.priceUah,
       sellerName: seller.name,
       sellerSourceId: seller.userId,
       sellerType: seller.type,
@@ -207,10 +196,18 @@ export function parseListingHtml(html: string): ListingSnapshot {
   const blocks = ldJsonBlocks(html)
   const state = piniaState(html)
   const seller = extractSeller(state)
+  const specs = extractSpecs(state)
 
   let draft = fromLdJson(blocks)
-  draft = fillGaps(draft, fromPinia(state, seller))
-  draft = fillGaps(draft, { photos: extractPhotos(html) })
+  draft = fillGaps(draft, fromPinia(state, seller, specs))
+  draft = fillGaps(draft, { photos: extractPhotos(html, state) })
+
+  // Виняток із «шар доповнює, не затирає»: колір у ld+json нормалізований
+  // («Чорний»), а на сторінці стоїть те, що написав продавець («Чорний
+  // металік»). Детальніший опис корисніший — беремо його.
+  if (specs.color && (!draft.color || specs.color.length > draft.color.length)) {
+    draft = { ...draft, color: specs.color }
+  }
 
   // Шар 3 вмикаємо тільки якщо перші два лишили дірки — cheerio недешевий.
   const stillMissing = !draft.title || !draft.priceUsd || !draft.city || !draft.descriptionText
@@ -221,7 +218,8 @@ export function parseListingHtml(html: string): ListingSnapshot {
     // Розібрані поля як є: sourceRaw для listings.snapshot_raw.
     // `seller` кладемо цілком: номера телефону на сторінці немає, але userId
     // і маска знадобляться на кроці «Продавці, склейка по телефону».
-    raw: { parser: 'html', ldJson: blocks, seller, fields: draft },
+    // `specs` — усе, що на картці показуємо без окремих колонок.
+    raw: { parser: 'html', ldJson: blocks, seller, specs, fields: draft },
     html,
   }
 }

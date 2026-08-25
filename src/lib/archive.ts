@@ -23,10 +23,14 @@ import type { ListingSnapshot } from '@/lib/sources/types'
  */
 const DEFAULT_BUDGET_MS = 40_000
 
-function photoKey(listing: Listing, url: string, index: number): string {
+/**
+ * Ключ фото у сховищі. Експортується, бо перепарсинг (`scripts/reparse.ts`)
+ * має вміти порахувати ключ старого фото, щоб прибрати чуже.
+ */
+export function photoKey(listing: Listing, url: string, index: number): string {
   const hash = createHash('sha256').update(url).digest('hex').slice(0, 8)
-  const ext = url.split('?')[0].split('.').pop()?.toLowerCase().slice(0, 5) || 'jpg'
   const prefix = storageKeyPrefix({ source: listing.source, id: listing.sourceId })
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase().slice(0, 5) || 'jpg'
   return `${prefix}/${String(index).padStart(2, '0')}-${hash}.${ext}`
 }
 
