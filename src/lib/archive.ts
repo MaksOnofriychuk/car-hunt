@@ -28,9 +28,22 @@ const DEFAULT_BUDGET_MS = 40_000
  * має вміти порахувати ключ старого фото, щоб прибрати чуже.
  */
 export function photoKey(listing: Listing, url: string, index: number): string {
-  const hash = createHash('sha256').update(url).digest('hex').slice(0, 8)
+  // Хеш рахується зі **шляху**, а не з усього URL. AUTO.RIA роздає те саме фото
+  // з cdn0/cdn2/cdn3, і від хешу цілого URL кожен наступний парсинг вважав би
+  // його новим: у 25-фотографійного оголошення набігло 46 копій у сховищі.
+  // Шлях у всіх дзеркал однаковий, а в OLX він містить id файлу, тому
+  // унікальність не страждає. Заразом відпадають utm-хвости.
+  const hash = createHash('sha256').update(pathOf(url)).digest('hex').slice(0, 8)
   const prefix = storageKeyPrefix({ source: listing.source, id: listing.sourceId })
   return `${prefix}/${String(index).padStart(2, '0')}-${hash}.${extFor(url)}`
+}
+
+function pathOf(url: string): string {
+  try {
+    return new URL(url).pathname
+  } catch {
+    return url
+  }
 }
 
 /**
@@ -80,15 +93,25 @@ export async function archiveListing(
       .where(eq(listings.id, listing.id))
   }
 
-  // 3. Фото — інкрементально, лише ті, яких ще немає.
-  const saved = [...listing.photosLocal]
+  /*
+   * 3. Фото — інкрементально, лише ті, яких ще немає.
+   *
+   * Список **дзеркалить поточний набір** оголошення, а не наростає: інакше
+   * після зміни адрес на майданчику в ньому лишались би ключі старих копій, і
+   * `photos_local.length >= photos.length` брехало б, що архів повний. Самі
+   * файли не видаляються — місце прибирає окрема дія в налаштуваннях.
+   */
+  const saved: string[] = []
   const total = listing.photos.length
 
-  for (const [index, url] of listing.photos.entries()) {
+  // Сховища немає (Vercel без R2) — качати нікуди. Сторінка й опис уже
+  // збережені: вони в колонках бази, а не у файлах.
+  const photosPossible = files.name !== 'none'
+
+  for (const [index, url] of photosPossible ? listing.photos.entries() : []) {
     if (Date.now() > deadline) break
 
     const key = photoKey(listing, url, index)
-    if (saved.includes(key)) continue
 
     try {
       if (!(await files.exists(key))) {

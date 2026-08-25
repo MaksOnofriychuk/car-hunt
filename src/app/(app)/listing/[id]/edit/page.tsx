@@ -5,7 +5,7 @@ import { ListingForm, type ListingFormValues } from '@/components/ListingForm'
 import { getListingDetail } from '@/db/queries'
 import { requireSession } from '@/lib/auth'
 import { kyivIsoDay } from '@/lib/dates'
-import { storage } from '@/lib/storage'
+import { fileUrl } from '@/lib/photos'
 
 export const metadata = { title: 'Редагування' }
 
@@ -25,7 +25,6 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
   if (!detail) notFound()
 
   const { listing, seller } = detail
-  const files = storage()
 
   const values: ListingFormValues = {
     brand: listing.brand ?? '',
@@ -64,7 +63,7 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       <ListingForm
         listingId={listing.id}
         values={values}
-        photos={listing.photosManual.map((key) => ({ key, url: files.url(key) }))}
+        photos={listing.photosManual.map((key) => ({ key, url: fileUrl(key) }))}
       />
     </div>
   )

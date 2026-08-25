@@ -8,6 +8,13 @@ import { notifyNewListing } from '@/lib/telegram/notify'
 
 export const runtime = 'nodejs'
 
+/**
+ * Парсинг і архівація йдуть у `after()` уже після відповіді, але живуть у тій
+ * самій функції: сторінка оголошення, курс, потім десятки фото. Типових 10 с
+ * не вистачило б, і картка лишалась би з половиною архіву.
+ */
+export const maxDuration = 60
+
 const bodySchema = z
   .object({
     url: z.string().trim().min(1).optional(),

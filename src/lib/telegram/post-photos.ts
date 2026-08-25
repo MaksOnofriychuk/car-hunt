@@ -42,6 +42,9 @@ export async function savePostPhotos(
   if (photos.length === 0) return { keys: [], complete: true }
 
   const files = storage()
+  // Нікуди зберігати — не качаємо взагалі: пост лишиться без фото, зате з
+  // текстом, ціною і телефоном, заради яких він і потрібен.
+  if (files.name === 'none') return { keys: [], complete: false }
   const deadline = Date.now() + budgetMs
   const keys: string[] = []
 

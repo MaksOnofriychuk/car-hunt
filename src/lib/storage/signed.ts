@@ -20,6 +20,18 @@ const PREFIX = 'file:'
 /** Година: Telegram качає картинку одразу, запас — на повтори при збоях. */
 export const SIGNED_URL_TTL_SECONDS = 60 * 60
 
+/**
+ * Момент, до якого дійсне посилання, **округлений до години**.
+ *
+ * Інакше кожен рендер сторінки давав би новий підпис, тобто нову адресу — і ні
+ * кеш браузера, ні кеш оптимізатора картинок не спрацював би жодного разу.
+ * Так адреса стабільна в межах години, а живе від однієї до двох.
+ */
+function expiryFor(ttlSeconds: number): number {
+  const hour = 3600
+  return Math.ceil(Date.now() / 1000 / hour) * hour + ttlSeconds
+}
+
 function secret(): string {
   const value = process.env.SESSION_SECRET
   if (!value) throw new Error('SESSION_SECRET не заданий — нічим підписувати посилання на файли')
@@ -43,17 +55,30 @@ export function signedFileUrl(key: string, ttlSeconds = SIGNED_URL_TTL_SECONDS):
   const base = process.env.APP_URL?.replace(/\/$/, '')
   if (!base) return null
 
+  const path = signedFilePath(key, ttlSeconds)
+  return path ? `${base}${path}` : null
+}
+
+/**
+ * Той самий підпис, але відносним шляхом — для картинок усередині застосунку.
+ *
+ * Потрібен через `next/image`: оптимізатор качає файл **власним серверним
+ * запитом**, без наших cookie, і на захищений роут отримує редирект на вхід
+ * замість картинки. Підпис на конкретний ключ це розвʼязує, не відкриваючи
+ * теку цілком.
+ */
+export function signedFilePath(key: string, ttlSeconds = SIGNED_URL_TTL_SECONDS): string | null {
   try {
     assertSafeKey(key)
   } catch {
     return null
   }
 
-  const expires = Math.floor(Date.now() / 1000) + ttlSeconds
+  const expires = expiryFor(ttlSeconds)
   const path = key.split('/').map(encodeURIComponent).join('/')
   const query = new URLSearchParams({ exp: String(expires), sig: sign(key, expires) })
 
-  return `${base}/api/files/${path}?${query}`
+  return `/api/files/${path}?${query}`
 }
 
 /** Чи справжній підпис і чи не протух. Порівняння стале в часі. */

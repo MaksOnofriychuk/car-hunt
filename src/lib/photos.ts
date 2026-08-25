@@ -1,5 +1,6 @@
 import type { Listing } from '@/db/schema'
 import { storage } from '@/lib/storage'
+import { signedFilePath } from '@/lib/storage/signed'
 
 /**
  * Що показувати на картці. Порядок такий:
@@ -22,13 +23,28 @@ export function displayPhotos(
    */
   postKeys: string[] = [],
 ): string[] {
-  const files = storage()
-  const local = listing.photosLocal.map((key) => files.url(key))
-  const manual = listing.photosManual.map((key) => files.url(key))
+  const local = listing.photosLocal.map(fileUrl)
+  const manual = listing.photosManual.map(fileUrl)
 
   const archived = local.length > 0 && listing.photosLocal.length >= listing.photos.length
   const base = archived || listing.photos.length === 0 ? local : listing.photos
 
   const own = [...base, ...manual]
-  return own.length > 0 ? own : postKeys.map((key) => files.url(key))
+  return own.length > 0 ? own : postKeys.map(fileUrl)
+}
+
+/**
+ * Адреса файлу для показу. Наш роут віддає файли під автентифікацією, а
+ * оптимізатор `next/image` качає їх **власним серверним запитом без cookie** —
+ * і отримував би редирект на вхід замість картинки. Тому шлях підписується на
+ * конкретний ключ (година життя, стабільний у межах години заради кешу).
+ *
+ * Якщо сховище роздає файли саме (публічний домен R2), підписувати нічого не
+ * треба — адреса й так відкрита.
+ */
+export function fileUrl(key: string): string {
+  const url = storage().url(key)
+  if (!url.startsWith('/api/files/')) return url
+
+  return signedFilePath(key) ?? url
 }

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { SELLER_TYPES, SOURCE_NAMES, type SellerType } from '@/db/schema'
+import { SELLER_TYPES, SOURCE_NAMES, type SellerType } from '@/db/values'
 import { SOURCE_LABELS } from '@/lib/sources/labels'
 import { cn } from '@/lib/cn'
 import {

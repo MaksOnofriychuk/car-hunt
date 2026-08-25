@@ -16,6 +16,7 @@ import { sendMessage } from '@/lib/telegram/api'
 import { todayMessage } from '@/lib/telegram/messages'
 import { sweepStaleInbox } from '@/lib/telegram/inbox'
 import { isQuietNow } from '@/lib/telegram/notify'
+import { storage } from '@/lib/storage'
 import { savePostPhotos, type PhotoRef } from '@/lib/telegram/post-photos'
 import { appendPostPhotos, postsAwaitingPhotos } from '@/db/telegram'
 import { AUTHOR_VALUES, type Author } from '@/lib/users'
@@ -45,6 +46,14 @@ export function cronAuthorized(request: Request): boolean {
 /** Скільки мережевих запитів дозволено за один прогін (SPEC). */
 const REQUEST_BUDGET = 25
 
+/**
+ * Скільки прогін узагалі має право тривати. На serverless функцію обривають по
+ * `maxDuration` (у нас 60 с), і обрив посеред роботи нічого не ламає — кожен
+ * крок фіксується окремо, — але краще зупинитись самим і дати наступному
+ * прогону продовжити з того ж місця.
+ */
+const RUN_BUDGET_MS = 50_000
+
 /** Джерела, які взагалі має сенс перезавантажувати. */
 const REFRESHABLE = SOURCES.filter((source) => source.refreshable).map((source) => source.name)
 
@@ -70,10 +79,12 @@ export async function runRefresh(): Promise<RefreshReport> {
   }
 
   let budget = REQUEST_BUDGET
+  const deadline = Date.now() + RUN_BUDGET_MS
+  const outOfTime = () => Date.now() > deadline
 
   // 1. Пріоритет перший: картки, які так і не розібрались.
   for (const listing of await pendingListings(budget)) {
-    if (budget <= 0) break
+    if (budget <= 0 || outOfTime()) break
     budget -= 1
     await parseListing(listing.id)
     report.parsed += 1
@@ -82,7 +93,7 @@ export async function runRefresh(): Promise<RefreshReport> {
   // 2. Неповний архів: HTML і фото, яких бракує. Telegram сюди не потрапляє —
   //    у нього немає html_raw, і він висів би в цій черзі довіку.
   for (const listing of await archiveBacklog(Math.min(budget, 5))) {
-    if (budget <= 0) break
+    if (budget <= 0 || outOfTime()) break
     budget -= 1
     const result = await archiveListing(listing)
     if (result.complete) report.archived += 1
@@ -98,7 +109,7 @@ export async function runRefresh(): Promise<RefreshReport> {
   // 4. Ціни. Найдавніше розібрані — першими; те, що не влізло, добере наступний
   //    прогін. Telegram і manual сюди не входять: оновлювати їх нізвідки.
   for (const listing of await staleListings(budget)) {
-    if (budget <= 0) break
+    if (budget <= 0 || outOfTime()) break
     budget -= 1
     await parseListing(listing.id)
     report.refreshed += 1
@@ -163,6 +174,9 @@ async function staleListings(limit: number): Promise<Listing[]> {
 
 /** Доякати фото постів, яким не вистачило часу під час обробки. */
 async function finishPostPhotos(): Promise<number> {
+  // Без сховища ця черга ніколи не спорожніє — не смикаємо її щогодини.
+  if (storage().name === 'none') return 0
+
   const posts = await postsAwaitingPhotos(5)
   let finished = 0
 

@@ -1,4 +1,4 @@
-import { SELLER_TYPES, SOURCE_NAMES, type SellerType, type SourceName } from '@/db/schema'
+import { SELLER_TYPES, SOURCE_NAMES, type SellerType, type SourceName } from '@/db/values'
 import { STAGES, type Stage } from '@/lib/stages'
 
 /**

@@ -1,4 +1,5 @@
-import { DEFAULT_STAGE, STAGES, type Event, type Stage } from '@/db/schema'
+import { DEFAULT_STAGE, STAGES, type Stage } from '@/db/values'
+import type { Event } from '@/db/schema'
 
 export { STAGES, DEFAULT_STAGE, type Stage }
 

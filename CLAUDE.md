@@ -20,6 +20,7 @@ npm run db:generate | db:migrate | db:studio | db:seed   # схема → БД �
 npm run reparse  # перерозбір збережених html_raw новим парсером (--dry, --archive)
 ```
 Змінні — в `.env.local` (не комітиться), перелік у `.env.example`.
+Деплой і його передумови — `docs/deploy.md`; вхідні/вихідні Telegram — `docs/telegram.md`.
 
 ## Структура
 ```

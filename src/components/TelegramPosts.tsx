@@ -7,7 +7,7 @@ import { cn } from '@/lib/cn'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, formatPrice } from '@/lib/format'
 import type { Currency } from '@/lib/settings'
-import { storage } from '@/lib/storage'
+import { fileUrl } from '@/lib/photos'
 
 /**
  * Блок «З Telegram» — стрічка постів про це авто.
@@ -27,7 +27,6 @@ export function TelegramPosts({
 }) {
   if (posts.length === 0) return null
 
-  const files = storage()
   // Найсвіжіший зверху: саме він описує теперішній стан.
   const ordered = [...posts].reverse()
 
@@ -76,7 +75,7 @@ export function TelegramPosts({
                   {post.photosLocal.slice(0, 4).map((key) => (
                     <Image
                       key={key}
-                      src={files.url(key)}
+                      src={fileUrl(key)}
                       alt=""
                       width={160}
                       height={120}

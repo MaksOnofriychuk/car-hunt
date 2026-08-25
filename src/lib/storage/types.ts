@@ -1,6 +1,7 @@
 /** Сховище файлів — SPEC, «Сховище файлів». Дві реалізації, один інтерфейс. */
 export interface FileStorage {
-  readonly name: 'r2' | 'local'
+  /** `none` — сховища немає: на Vercel без ключів R2 писати нікуди. */
+  readonly name: 'r2' | 'local' | 'none'
   put(key: string, body: Buffer, contentType: string): Promise<void>
   get(key: string): Promise<Buffer | null>
   exists(key: string): Promise<boolean>

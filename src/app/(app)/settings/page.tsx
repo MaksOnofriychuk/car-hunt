@@ -37,7 +37,7 @@ export default async function SettingsPage() {
       <LookSettings look={parseLook(jar.get(LOOK_COOKIE)?.value)} />
       <WorkSettings settings={settings} />
       <NotifySettings settings={settings} />
-      <DataSettings usage={usage} />
+      <DataSettings usage={usage} storage={storage().name} />
     </div>
   )
 }

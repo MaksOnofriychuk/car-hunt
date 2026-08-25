@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { getAuthor } from '@/lib/auth'
 import { contentTypeFor, storage } from '@/lib/storage'
+import { fileUrl } from '@/lib/photos'
 
 /**
  * Фото, додані руками. Окремий роут, а не серверна дія: у дій ліміт тіла 1 МБ,
@@ -45,7 +46,14 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const key = `listings/manual/${randomUUID()}.${ext}`
   const body = Buffer.from(await file.arrayBuffer())
+  if (storage().name === 'none') {
+    return NextResponse.json(
+      { error: 'Сховище фото не налаштоване. Додай ключі R2 — див. docs/deploy.md' },
+      { status: 503 },
+    )
+  }
+
   await storage().put(key, body, contentTypeFor(key))
 
-  return NextResponse.json({ key, url: storage().url(key) })
+  return NextResponse.json({ key, url: fileUrl(key) })
 }

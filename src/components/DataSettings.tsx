@@ -12,7 +12,14 @@ import { formatNumber } from '@/lib/format'
  * PDF робить браузер зі сторінки друку — бібліотека, яка малює PDF на сервері,
  * важила б більше за весь застосунок і верстала б гірше.
  */
-export function DataSettings({ usage }: { usage: { files: number; bytes: number } | null }) {
+export function DataSettings({
+  usage,
+  storage,
+}: {
+  usage: { files: number; bytes: number } | null
+  /** `none` — сховища немає: на Vercel без ключів R2 копії фото не робляться. */
+  storage: 'r2' | 'local' | 'none'
+}) {
   const [state, formAction, pending] = useActionState(cleanupArchivedPhotos, IDLE)
   const [confirming, setConfirming] = useState(false)
 
@@ -49,7 +56,11 @@ export function DataSettings({ usage }: { usage: { files: number; bytes: number 
 
       <p className="t-body mt-3">
         Фото у сховищі:{' '}
-        {usage ? (
+        {storage === 'none' ? (
+          <span className="text-warn">
+            сховище не налаштоване — копії не робляться, картки показують фото з майданчика
+          </span>
+        ) : usage ? (
           <span className="t-num">
             {formatNumber(usage.files)} файлів · {megabytes(usage.bytes)}
           </span>
