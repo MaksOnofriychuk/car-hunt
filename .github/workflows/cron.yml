@@ -1,0 +1,43 @@
+# Фонові задачі — SPEC, «Фонові задачі (cron)».
+#
+# Розклад тут, а не у Vercel, з двох причин: на безкоштовному тарифі Vercel Cron
+# ходить лише раз на добу, і він не вміє передавати параметри. У vercel.json
+# лишається добовий прогін як страховка, якщо Actions вимкнуть.
+#
+# Зведення викликається теж щогодини: 8:00 за Києвом узимку — це 06:00 UTC, а
+# влітку 05:00, і розкладом у це не влучити. Кому саме вже час, вирішує сам
+# застосунок, звіряючи годину за Києвом із `digest_at` кожного.
+#
+# Потрібні два секрети репозиторію (Settings → Secrets and variables → Actions):
+#   APP_URL     — https://car-hunt.vercel.app
+#   CRON_SECRET — те саме значення, що у змінних Vercel
+name: cron
+
+on:
+  schedule:
+    # Оновлення — на 10-й хвилині кожної години; зведення — на 15-й, щоб
+    # зведення бачило вже оновлені ціни.
+    - cron: '10 * * * *'
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    if: github.event.schedule == '10 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Оновлення цін, архіву і черги Telegram
+        run: |
+          curl --fail --silent --show-error --max-time 120 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/refresh" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+  daily:
+    if: github.event.schedule == '15 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ранкове зведення (надішлеться лише тому, кому вже час)
+        run: |
+          curl --fail --silent --show-error --max-time 60 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/daily" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

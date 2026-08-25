@@ -298,6 +298,12 @@ export const userSettings = pgTable('user_settings', {
   digestAt: text('digest_at').notNull().default('08:00'),
   quietFrom: text('quiet_from').notNull().default('22:00'),
   quietTo: text('quiet_to').notNull().default('08:00'),
+  /**
+   * Якого дня востаннє пішло ранкове зведення. Крон ходить щогодини — інакше не
+   * влучити у 8:00 за Києвом і взимку, і влітку, — тому потрібна позначка, що
+   * сьогодні вже надіслано.
+   */
+  digestSentOn: date('digest_sent_on', { mode: 'string' }),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow()
