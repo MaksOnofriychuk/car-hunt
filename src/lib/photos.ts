@@ -1,10 +1,26 @@
 import type { Listing } from '@/db/schema'
+import { storage } from '@/lib/storage'
 
 /**
- * Поки сховище не підключене (крок «Інгест і парсер»), показуємо оригінальні URL з RIA.
- * Далі тут буде storage.url(key) по photos_local, а photos лишиться запасним варіантом —
- * SPEC, «Повний архів оголошення».
+ * Що показувати на картці. Порядок такий:
+ *
+ *   1. наші копії з `photos_local`, коли завантажені **всі** — оголошення
+ *      колись знімуть, і тільки вони переживуть це (SPEC, «Повний архів»);
+ *   2. поки копії ще доякуються — оригінальні URL з майданчика;
+ *   3. в кінці — фото, додані руками: вони не з оголошення, тому й не мають
+ *      витісняти його галерею.
+ *
+ * Для карток, заведених руками, і для telegram інших фото не буває взагалі.
  */
-export function displayPhotos(listing: Pick<Listing, 'photos' | 'photosLocal'>): string[] {
-  return listing.photos
+export function displayPhotos(
+  listing: Pick<Listing, 'photos' | 'photosLocal' | 'photosManual'>,
+): string[] {
+  const files = storage()
+  const local = listing.photosLocal.map((key) => files.url(key))
+  const manual = listing.photosManual.map((key) => files.url(key))
+
+  const archived = local.length > 0 && listing.photosLocal.length >= listing.photos.length
+  const base = archived || listing.photos.length === 0 ? local : listing.photos
+
+  return [...base, ...manual]
 }

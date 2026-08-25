@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { events, listings, priceHistory, type Author, type Listing } from '@/db/schema'
 import { linkSeller } from '@/db/sellers'
+import { dropManual } from '@/db/listings'
 import { archiveListing } from '@/lib/archive'
 import { bothPrices } from '@/lib/rates'
 import { canonicalizeRef } from '@/lib/sources/canonicalize'
@@ -83,30 +84,32 @@ export async function parseListing(listingId: string): Promise<void> {
 
     await db
       .update(listings)
-      .set({
-        status: 'active',
-        title: snapshot.title ?? listing.title,
-        brand: snapshot.brand ?? listing.brand,
-        model: snapshot.model ?? listing.model,
-        year: snapshot.year ?? listing.year,
-        mileageKm: snapshot.mileageKm ?? listing.mileageKm,
-        priceUsd: price ?? listing.priceUsd,
-        city: snapshot.city ?? listing.city,
-        vin: snapshot.vin ?? listing.vin,
-        fuelType: snapshot.fuelType ?? listing.fuelType,
-        transmission: snapshot.transmission ?? listing.transmission,
-        color: snapshot.color ?? listing.color,
-        engineVolume: snapshot.engineVolume ?? listing.engineVolume,
-        driveType: snapshot.driveType ?? listing.driveType,
-        bodyType: snapshot.bodyType ?? listing.bodyType,
-        plateNumber: snapshot.plateNumber ?? listing.plateNumber,
-        priceUah: money.priceUah ?? listing.priceUah,
-        publishedAt: snapshot.publishedAt ?? listing.publishedAt,
-        photos: snapshot.photos?.length ? snapshot.photos : listing.photos,
-        snapshotRaw: snapshot.raw,
-        parsedAt: new Date(),
-        parserVersion: PARSER_VERSION,
-      })
+      .set(
+        dropManual(listing, {
+          status: 'active',
+          title: snapshot.title ?? listing.title,
+          brand: snapshot.brand ?? listing.brand,
+          model: snapshot.model ?? listing.model,
+          year: snapshot.year ?? listing.year,
+          mileageKm: snapshot.mileageKm ?? listing.mileageKm,
+          priceUsd: price ?? listing.priceUsd,
+          city: snapshot.city ?? listing.city,
+          vin: snapshot.vin ?? listing.vin,
+          fuelType: snapshot.fuelType ?? listing.fuelType,
+          transmission: snapshot.transmission ?? listing.transmission,
+          color: snapshot.color ?? listing.color,
+          engineVolume: snapshot.engineVolume ?? listing.engineVolume,
+          driveType: snapshot.driveType ?? listing.driveType,
+          bodyType: snapshot.bodyType ?? listing.bodyType,
+          plateNumber: snapshot.plateNumber ?? listing.plateNumber,
+          priceUah: money.priceUah ?? listing.priceUah,
+          publishedAt: snapshot.publishedAt ?? listing.publishedAt,
+          photos: snapshot.photos?.length ? snapshot.photos : listing.photos,
+          snapshotRaw: snapshot.raw,
+          parsedAt: new Date(),
+          parserVersion: PARSER_VERSION,
+        }),
+      )
       .where(eq(listings.id, listing.id))
 
     if (price !== null) {

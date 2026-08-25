@@ -50,6 +50,9 @@ drizzle/            # міграції   scripts/ — seed
   CloudFront ріже TLS-відбиток Node, а не наш User-Agent. Ціна в гривні —
   `price_usd` рахується за курсом НБУ з таблиці `exchange_rates`, а подія
   `price_change` порівнює ціну **у валюті оголошення**.
+- Руками виправлене парсер не затирає: `listings.manual_fields` — перелік колонок
+  на рівні **поля**, через `dropManual()` проходить усе, що пише парсер. Фото,
+  додані руками, живуть у `photos_manual` — `reparse` чистить лише `photos_local`.
 - Ліміт AUTO.RIA API: 30/год, 1000/міс — лічильник у `source_requests`, лише для
   `kind: 'api'`. Вичерпався — листинг лишається `pending`, cron добере. ≥2 с між запитами.
 - Продавці склеюються по `(source, source_user_id)`, телефон — додатковий ключ

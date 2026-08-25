@@ -71,6 +71,13 @@
       "when": 1787645750829,
       "tag": "0009_orange_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787648945269,
+      "tag": "0010_wooden_psynapse",
+      "breakpoints": true
     }
   ]
 }

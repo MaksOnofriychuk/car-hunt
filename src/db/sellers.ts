@@ -198,3 +198,64 @@ export async function addSellerPhone(listingId: string, rawPhone: string): Promi
     sameAs: others.map((row) => ({ id: row.id, name: row.name })),
   }
 }
+
+/**
+ * Продавець із форми ручного заповнення. Відрізняється від `linkSeller` тим, що
+ * тут людина друкує сама: імʼя і тип перекривають те, що колись вгадав парсер,
+ * бо вона щойно з цим продавцем говорила.
+ *
+ * Повертає попередження `sameAs` — інші продавці з тим самим номером. Не зливаємо
+ * їх і тут: за одним номером сидить і перекуп, і його брат.
+ */
+export async function saveManualSeller(
+  listing: Listing,
+  input: { name: string | null; phone: string | null; type: SellerType | null },
+): Promise<{ sellerId: string | null; sameAs: SharedSeller[] }> {
+  const phone = input.phone ? normalizePhone(input.phone) : null
+  if (!input.name && !phone && !input.type) return { sellerId: null, sameAs: [] }
+
+  const seller = await findOrCreate(listing, phone)
+  if (!seller) return { sellerId: null, sameAs: [] }
+
+  const phones = phone && !seller.phones.includes(phone) ? [...seller.phones, phone] : seller.phones
+
+  await db
+    .update(sellers)
+    .set({
+      name: input.name ?? seller.name,
+      type: input.type ?? seller.type,
+      phones,
+    })
+    .where(eq(sellers.id, seller.id))
+
+  if (listing.sellerId !== seller.id) {
+    await db.update(listings).set({ sellerId: seller.id }).where(eq(listings.id, listing.id))
+  }
+
+  const sameAs = phone ? await sellersWithPhone(phone, seller.id) : []
+  return { sellerId: seller.id, sameAs: sameAs.map((row) => ({ id: row.id, name: row.name })) }
+}
+
+/** Продавець картки, продавець із таким номером, або новий. */
+async function findOrCreate(listing: Listing, phone: string | null): Promise<Seller | null> {
+  if (listing.sellerId) {
+    const [existing] = await db
+      .select()
+      .from(sellers)
+      .where(eq(sellers.id, listing.sellerId))
+      .limit(1)
+    if (existing) return existing
+  }
+
+  if (phone) {
+    const byPhone = await findByPhone([phone])
+    if (byPhone) return byPhone
+  }
+
+  const [created] = await db
+    .insert(sellers)
+    .values({ name: null, phones: phone ? [phone] : [], type: 'unknown' })
+    .returning()
+
+  return created ?? null
+}

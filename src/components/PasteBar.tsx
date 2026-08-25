@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
 import { findListingLink } from '@/lib/sources/links'
@@ -142,6 +143,16 @@ export function PasteBar() {
       </div>
 
       {note ? <p className="mt-2 text-[12px] text-muted">{note}</p> : null}
+
+      {/* Авто без оголошення: побачили в дворі, розповіли, продають у групі. */}
+      <div className="mt-2 border-t border-line pt-2">
+        <Link
+          href="/listing/new"
+          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-plate"
+        >
+          Додати вручну
+        </Link>
+      </div>
     </section>
   )
 }

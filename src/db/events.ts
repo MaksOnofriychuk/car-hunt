@@ -79,3 +79,16 @@ export async function changeStage(
 
   return event
 }
+
+/**
+ * Правка руками. Пишеться лише коли щось справді змінилось: у стрічці має бути
+ * видно, хто і що виправив, а не «відкрив форму і закрив».
+ */
+export async function recordEdit(
+  listingId: string,
+  author: Author,
+  fields: string[],
+): Promise<Event | null> {
+  if (fields.length === 0) return null
+  return addEvent(listingId, author, 'edit', { fields })
+}

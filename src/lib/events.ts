@@ -6,6 +6,27 @@ export const EVENT_LABELS: Record<EventType, string> = {
   stage_change: 'Зміна етапу',
   viewing: 'Огляд',
   price_change: 'Зміна ціни',
+  edit: 'Правка руками',
+}
+
+/** Людські назви полів картки — для події «правка руками». */
+export const FIELD_LABELS: Record<string, string> = {
+  brand: 'марка',
+  model: 'модель',
+  year: 'рік',
+  mileageKm: 'пробіг',
+  priceUsd: 'ціна',
+  city: 'місто',
+  publishedAt: 'дата публікації',
+  url: 'посилання',
+  descriptionText: 'опис',
+  photos: 'фото',
+}
+
+/** «марку, рік і ціну» — підпис події про правку. */
+export function fieldsLabel(fields: string[] | undefined): string | null {
+  if (!fields?.length) return null
+  return fields.map((field) => FIELD_LABELS[field] ?? field).join(', ')
 }
 
 /** Значення payload.outcome для дзвінків. */

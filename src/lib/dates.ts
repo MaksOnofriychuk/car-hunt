@@ -50,3 +50,9 @@ export function formatDate(date: Date | string): string {
     year: '2-digit',
   }).format(value)
 }
+
+/** Дата за Києвом у форматі YYYY-MM-DD — саме його розуміє `<input type="date">`. */
+export function kyivIsoDay(date: Date | null | undefined): string {
+  if (!date) return ''
+  return new Intl.DateTimeFormat('en-CA', { timeZone: KYIV }).format(date)
+}

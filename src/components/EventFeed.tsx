@@ -2,7 +2,7 @@ import { StageBadge } from './StageBadge'
 
 import type { Author, Event } from '@/db/schema'
 import { formatDateTime } from '@/lib/dates'
-import { callOutcome, EVENT_LABELS } from '@/lib/events'
+import { callOutcome, EVENT_LABELS, fieldsLabel } from '@/lib/events'
 import { formatUsd } from '@/lib/format'
 import { isStage } from '@/lib/stages'
 
@@ -43,8 +43,15 @@ export function EventFeed({ events, viewer, names }: Props) {
 }
 
 function EventBody({ event }: { event: Event }) {
-  const { text, outcome, offered_price: offered, old_price: oldPrice, new_price: newPrice, stage } =
-    event.payload ?? {}
+  const {
+    text,
+    outcome,
+    offered_price: offered,
+    old_price: oldPrice,
+    new_price: newPrice,
+    stage,
+    fields,
+  } = event.payload ?? {}
 
   if (event.type === 'stage_change') {
     return (
@@ -59,6 +66,10 @@ function EventBody({ event }: { event: Event }) {
         <span className="font-semibold">{formatUsd(newPrice)}</span>
       </p>
     )
+  }
+
+  if (event.type === 'edit') {
+    return <p className="mt-1 text-[14px] leading-snug">{fieldsLabel(fields) ?? '—'}</p>
   }
 
   const outcomeLabel = callOutcome(outcome)

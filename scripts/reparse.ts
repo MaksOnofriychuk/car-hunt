@@ -5,6 +5,7 @@ import { gunzipSync } from 'node:zlib'
 import { eq } from 'drizzle-orm'
 
 import { client, db } from '../src/db'
+import { dropManual } from '../src/db/listings'
 import { listings, type Listing } from '../src/db/schema'
 import { archiveListing, photoKey } from '../src/lib/archive'
 import { PARSER_VERSION, parseListing } from '../src/lib/ingest'
@@ -125,33 +126,35 @@ async function reparse(listing: Listing): Promise<Report | null> {
 
   await db
     .update(listings)
-    .set({
-      title: snapshot.title ?? listing.title,
-      brand: snapshot.brand ?? listing.brand,
-      model: snapshot.model ?? listing.model,
-      year: snapshot.year ?? listing.year,
-      mileageKm: snapshot.mileageKm ?? listing.mileageKm,
-      priceUsd: money.priceUsd ?? listing.priceUsd,
-      city: snapshot.city ?? listing.city,
-      vin: snapshot.vin ?? listing.vin,
-      fuelType: snapshot.fuelType ?? listing.fuelType,
-      transmission: snapshot.transmission ?? listing.transmission,
-      color: snapshot.color ?? listing.color,
-      engineVolume: snapshot.engineVolume ?? listing.engineVolume,
-      driveType: snapshot.driveType ?? listing.driveType,
-      bodyType: snapshot.bodyType ?? listing.bodyType,
-      plateNumber: snapshot.plateNumber ?? listing.plateNumber,
-      priceUah: money.priceUah ?? listing.priceUah,
-      publishedAt: snapshot.publishedAt ?? listing.publishedAt,
-      descriptionText: listing.descriptionText ?? snapshot.descriptionText ?? null,
-      photos,
-      photosLocal,
-      snapshotRaw: snapshot.raw,
-      // Архів знову неповний, якщо якогось фото ще немає у сховищі — cron добере.
-      archivedAt: photosLocal.length >= photos.length ? (listing.archivedAt ?? new Date()) : null,
-      parsedAt: new Date(),
-      parserVersion: PARSER_VERSION,
-    })
+    .set(
+      dropManual(listing, {
+        title: snapshot.title ?? listing.title,
+        brand: snapshot.brand ?? listing.brand,
+        model: snapshot.model ?? listing.model,
+        year: snapshot.year ?? listing.year,
+        mileageKm: snapshot.mileageKm ?? listing.mileageKm,
+        priceUsd: money.priceUsd ?? listing.priceUsd,
+        city: snapshot.city ?? listing.city,
+        vin: snapshot.vin ?? listing.vin,
+        fuelType: snapshot.fuelType ?? listing.fuelType,
+        transmission: snapshot.transmission ?? listing.transmission,
+        color: snapshot.color ?? listing.color,
+        engineVolume: snapshot.engineVolume ?? listing.engineVolume,
+        driveType: snapshot.driveType ?? listing.driveType,
+        bodyType: snapshot.bodyType ?? listing.bodyType,
+        plateNumber: snapshot.plateNumber ?? listing.plateNumber,
+        priceUah: money.priceUah ?? listing.priceUah,
+        publishedAt: snapshot.publishedAt ?? listing.publishedAt,
+        descriptionText: listing.descriptionText ?? snapshot.descriptionText ?? null,
+        photos,
+        photosLocal,
+        snapshotRaw: snapshot.raw,
+        // Архів знову неповний, якщо якогось фото ще немає у сховищі — cron добере.
+        archivedAt: photosLocal.length >= photos.length ? (listing.archivedAt ?? new Date()) : null,
+        parsedAt: new Date(),
+        parserVersion: PARSER_VERSION,
+      }),
+    )
     .where(eq(listings.id, listing.id))
 
   return report

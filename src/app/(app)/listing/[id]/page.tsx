@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Description } from '@/components/Description'
 import { EventFeed } from '@/components/EventFeed'
 import { ListingActions } from '@/components/ListingActions'
+import { ManualFields } from '@/components/ManualFields'
 import { ArchiveToggle, ContactDate, TargetPrice } from '@/components/ListingFields'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { PlateStrip } from '@/components/PlateStrip'
@@ -92,15 +93,29 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </p>
         ) : null}
 
-        <a
-          href={listing.url}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 block truncate font-mono text-[11px] text-plate underline underline-offset-2"
-        >
-          {listing.url}
-        </a>
+        <div className="mt-2 flex items-center gap-3">
+          {listing.url ? (
+            <a
+              href={listing.url}
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 flex-1 truncate font-mono text-[11px] text-plate underline underline-offset-2"
+            >
+              {listing.url}
+            </a>
+          ) : (
+            <span className="min-w-0 flex-1 text-[11px] text-muted">Заведено руками</span>
+          )}
+          <Link
+            href={`/listing/${listing.id}/edit`}
+            className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-plate"
+          >
+            Редагувати
+          </Link>
+        </div>
       </section>
+
+      <ManualFields listingId={listing.id} fields={listing.manualFields} />
 
       <Specs listing={listing} specs={specs} />
 

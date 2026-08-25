@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { db } from './index'
-import { listings } from './schema'
+import { listings, type Author, type Listing, type SourceName } from './schema'
 
 /**
  * Дрібні правки картки з екрана. Події сюди не пишуться — вони в `db/events.ts`.
@@ -34,4 +34,166 @@ export async function setNextContactAt(id: string, date: string | null): Promise
  */
 export async function setArchived(id: string, archived: boolean): Promise<void> {
   await db.update(listings).set({ archived }).where(eq(listings.id, id))
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Ручне заповнення                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Поля картки, які людина заповнює або виправляє руками. Рівно цей набір знає
+ * форма, і рівно ці ключі можуть опинитись у `manual_fields` — тому список один
+ * на весь застосунок.
+ */
+export type EditableFields = {
+  brand: string | null
+  model: string | null
+  year: number | null
+  mileageKm: number | null
+  priceUsd: number | null
+  city: string | null
+  publishedAt: Date | null
+  url: string | null
+  descriptionText: string | null
+}
+
+export const EDITABLE_FIELDS = [
+  'brand',
+  'model',
+  'year',
+  'mileageKm',
+  'priceUsd',
+  'city',
+  'publishedAt',
+  'url',
+  'descriptionText',
+] as const satisfies readonly (keyof EditableFields)[]
+
+export type EditableField = (typeof EDITABLE_FIELDS)[number]
+
+/** Назва картки, якщо її ніхто не задав: «Volkswagen Passat». */
+function titleFrom(values: EditableFields): string | null {
+  const parts = [values.brand, values.model].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : null
+}
+
+/** Заповнені поля — саме вони стають «виправленими руками». */
+function filledFields(values: Partial<EditableFields>): EditableField[] {
+  return EDITABLE_FIELDS.filter((key) => {
+    const value = values[key]
+    return value !== undefined && value !== null && value !== ''
+  })
+}
+
+/**
+ * Картка, заведена руками. Джерело `manual`, статус одразу `active`: тягнути
+ * дані нема звідки, тому й `pending` тут не має сенсу.
+ */
+export async function createManualListing(input: {
+  ref: { source: SourceName; id: string }
+  author: Author
+  values: EditableFields
+  photos: string[]
+}): Promise<string> {
+  const [created] = await db
+    .insert(listings)
+    .values({
+      source: input.ref.source,
+      sourceId: input.ref.id,
+      status: 'active',
+      ...input.values,
+      title: titleFrom(input.values),
+      url: input.values.url ?? '',
+      photosManual: input.photos,
+      // Усе, що людина ввела, парсер потім не має права затерти.
+      manualFields: filledFields(input.values),
+      createdBy: input.author,
+      parsedAt: null,
+    })
+    .returning({ id: listings.id })
+
+  return created.id
+}
+
+/**
+ * Правка наявної картки. Повертає перелік полів, які справді змінились, — з
+ * нього робиться подія в стрічці. Кожне змінене поле дописується в
+ * `manual_fields`, і відтоді парсер його не чіпає.
+ */
+export async function updateListingFields(
+  id: string,
+  values: EditableFields,
+  photos: string[],
+): Promise<EditableField[]> {
+  const [current] = await db.select().from(listings).where(eq(listings.id, id)).limit(1)
+  if (!current) return []
+
+  const changed = EDITABLE_FIELDS.filter((key) => !same(current[key], values[key]))
+  const manualFields = [...new Set([...current.manualFields, ...changed])]
+
+  await db
+    .update(listings)
+    .set({
+      ...values,
+      url: values.url ?? current.url,
+      title: current.title ?? titleFrom(values),
+      photosManual: photos,
+      manualFields,
+      // Заповнили руками картку, яку парсер не подужав, — вона більше не зламана.
+      status: current.status === 'failed' ? 'active' : current.status,
+    })
+    .where(eq(listings.id, id))
+
+  return changed
+}
+
+/** Дати або зняти позначку «виправлено руками» з одного поля. */
+export async function setFieldManual(
+  id: string,
+  field: EditableField,
+  manual: boolean,
+): Promise<void> {
+  const [current] = await db
+    .select({ manualFields: listings.manualFields })
+    .from(listings)
+    .where(eq(listings.id, id))
+    .limit(1)
+  if (!current) return
+
+  const next = manual
+    ? [...new Set([...current.manualFields, field])]
+    : current.manualFields.filter((item) => item !== field)
+
+  await db.update(listings).set({ manualFields: next }).where(eq(listings.id, id))
+}
+
+/**
+ * Чи те саме значення. Дати звіряємо по часу, а порожній рядок і `null`
+ * вважаємо однаковим: у формі порожнє поле — це `''`, у базі — `null`, і без
+ * цього кожне збереження позначало б порожні поля як «виправлені руками».
+ */
+function same(a: unknown, b: unknown): boolean {
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime()
+  if (a instanceof Date || b instanceof Date) return false
+  return blank(a) === blank(b)
+}
+
+function blank(value: unknown): unknown {
+  return value === '' || value === undefined ? null : value
+}
+
+/**
+ * Прибрати з оновлення поля, які людина виправила руками. Через це проходить
+ * усе, що пише парсер, — і фоновий `parseListing`, і перерозбір: cron має
+ * оновлювати ціну, але не повертати марку, яку колись витягнув невірно.
+ */
+export function dropManual<T extends Record<string, unknown>>(
+  listing: Pick<Listing, 'manualFields'>,
+  values: T,
+): T {
+  if (listing.manualFields.length === 0) return values
+
+  const next = { ...values }
+  for (const field of listing.manualFields) delete next[field]
+  return next
 }

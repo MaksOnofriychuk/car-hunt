@@ -1,12 +1,27 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
-import { changeStage, recordCall, recordComment } from '@/db/events'
-import { listingExists, setArchived, setNextContactAt, setTargetPrice } from '@/db/listings'
-import { STAGES } from '@/db/schema'
-import { addSellerPhone } from '@/db/sellers'
+import { db } from '@/db'
+
+import { changeStage, recordCall, recordComment, recordEdit } from '@/db/events'
+import {
+  createManualListing,
+  listingExists,
+  setArchived,
+  setFieldManual,
+  setNextContactAt,
+  setTargetPrice,
+  updateListingFields,
+  EDITABLE_FIELDS,
+  type EditableFields,
+} from '@/db/listings'
+import { listings, SELLER_TYPES, STAGES, type SellerType } from '@/db/schema'
+import { addSellerPhone, saveManualSeller } from '@/db/sellers'
+import { manualRef } from '@/lib/sources'
 import { requireAuthor } from '@/lib/auth'
 import { kyivDatePlus } from '@/lib/dates'
 import { CALL_OUTCOME_ORDER } from '@/lib/events'
@@ -235,4 +250,176 @@ export async function saveSellerPhone(
   revalidatePath('/sellers')
 
   return { error: null, saved: result.phone, sameAs: result.sameAs }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Ручне заповнення                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Форма ручного додавання і редагування. Обовʼязкові лише марка і модель:
+ * решту дописують потім, коли з'явиться. Усе, що людина тут вводить, парсер
+ * більше не перезаписує — див. `manual_fields`.
+ */
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+const formSchema = z.object({
+  brand: z.string().min(1).max(60),
+  model: z.string().min(1).max(60),
+  year: z.coerce.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
+  mileageKm: z.coerce.number().int().min(0).max(3_000_000).optional(),
+  priceUsd: z.coerce.number().int().positive().max(10_000_000).optional(),
+  city: z.string().max(60).optional(),
+  publishedAt: z.string().regex(ISO_DAY).optional(),
+  url: z.url().max(2000).optional(),
+  descriptionText: z.string().max(20_000).optional(),
+  sellerName: z.string().max(120).optional(),
+  sellerPhone: z.string().max(40).optional(),
+  sellerType: z.enum(SELLER_TYPES).optional(),
+})
+
+/** Помилки — людською мовою і по одній: форма показує рядок, а не список. */
+const FIELD_ERRORS: Record<string, string> = {
+  brand: 'Марка і модель обовʼязкові',
+  model: 'Марка і модель обовʼязкові',
+  year: 'Рік — чотири цифри',
+  mileageKm: 'Пробіг — тільки число',
+  priceUsd: 'Ціна — тільки число',
+  publishedAt: 'Дата у форматі РРРР-ММ-ДД',
+  url: 'Посилання схоже на неправильне',
+  sellerType: 'Невідомий тип продавця',
+}
+
+type ParsedForm = {
+  values: EditableFields
+  seller: { name: string | null; phone: string | null; type: SellerType | null }
+  photos: string[]
+}
+
+function readForm(formData: FormData): { ok: true; data: ParsedForm } | { ok: false; error: string } {
+  const parsed = formSchema.safeParse({
+    brand: field(formData, 'brand'),
+    model: field(formData, 'model'),
+    year: field(formData, 'year'),
+    mileageKm: field(formData, 'mileageKm')?.replace(/\s/g, ''),
+    priceUsd: field(formData, 'priceUsd')?.replace(/[^\d]/g, '') || undefined,
+    city: field(formData, 'city'),
+    publishedAt: field(formData, 'publishedAt'),
+    url: field(formData, 'url'),
+    descriptionText: field(formData, 'descriptionText'),
+    sellerName: field(formData, 'sellerName'),
+    sellerPhone: field(formData, 'sellerPhone'),
+    sellerType: field(formData, 'sellerType'),
+  })
+
+  if (!parsed.success) {
+    const where = String(parsed.error.issues[0]?.path[0] ?? '')
+    return { ok: false, error: FIELD_ERRORS[where] ?? 'Перевір заповнені поля' }
+  }
+
+  const input = parsed.data
+  return {
+    ok: true,
+    data: {
+      values: {
+        brand: input.brand,
+        model: input.model,
+        year: input.year ?? null,
+        mileageKm: input.mileageKm ?? null,
+        priceUsd: input.priceUsd ?? null,
+        city: input.city ?? null,
+        // Полудень за Києвом: інакше дата зʼїжджає на добу назад.
+        publishedAt: input.publishedAt ? new Date(`${input.publishedAt}T12:00:00+03:00`) : null,
+        url: input.url ?? null,
+        descriptionText: input.descriptionText ?? null,
+      },
+      seller: {
+        name: input.sellerName ?? null,
+        phone: input.sellerPhone ?? null,
+        type: input.sellerType ?? null,
+      },
+      photos: readPhotoKeys(formData),
+    },
+  }
+}
+
+/** Ключі вже завантажених фото приходять прихованим полем як JSON. */
+function readPhotoKeys(formData: FormData): string[] {
+  const raw = formData.get('photos')
+  if (typeof raw !== 'string' || !raw.trim()) return []
+
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((key): key is string => typeof key === 'string').slice(0, 40)
+  } catch {
+    return []
+  }
+}
+
+export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
+  const author = await requireAuthor()
+
+  const form = readForm(formData)
+  if (!form.ok) return { error: form.error, ok: false }
+
+  const id = await createManualListing({
+    ref: manualRef(),
+    author,
+    values: form.data.values,
+    photos: form.data.photos,
+  })
+
+  const [created] = await db.select().from(listings).where(eq(listings.id, id)).limit(1)
+  if (created) await saveManualSeller(created, form.data.seller)
+
+  revalidatePath('/')
+  redirect(`/listing/${id}`)
+}
+
+export async function saveListing(_prev: FormState, formData: FormData): Promise<FormState> {
+  const author = await requireAuthor()
+
+  const listingId = listingIdSchema.safeParse(field(formData, 'listingId'))
+  if (!listingId.success) return { error: NOT_FOUND, ok: false }
+
+  const form = readForm(formData)
+  if (!form.ok) return { error: form.error, ok: false }
+
+  const [listing] = await db
+    .select()
+    .from(listings)
+    .where(eq(listings.id, listingId.data))
+    .limit(1)
+  if (!listing) return { error: NOT_FOUND, ok: false }
+
+  const changed = await updateListingFields(listingId.data, form.data.values, form.data.photos)
+  await saveManualSeller(listing, form.data.seller)
+
+  const photosChanged = form.data.photos.join() !== listing.photosManual.join()
+  await recordEdit(listingId.data, author, [...changed, ...(photosChanged ? ['photos'] : [])])
+
+  refresh(listingId.data)
+  redirect(`/listing/${listingId.data}`)
+}
+
+/**
+ * «Знову довіряти парсеру»: знімає позначку з одного поля, і наступний прогін
+ * повертає туди значення з оголошення.
+ */
+export async function unlockField(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAuthor()
+
+  const listingId = listingIdSchema.safeParse(field(formData, 'listingId'))
+  const name = field(formData, 'field')
+  const known = EDITABLE_FIELDS.find((item) => item === name)
+
+  if (!listingId.success || !known) return { error: NOT_FOUND, ok: false }
+  if (!(await listingExists(listingId.data))) return { error: NOT_FOUND, ok: false }
+
+  await setFieldManual(listingId.data, known, false)
+  refresh(listingId.data)
+
+  return { error: null, ok: true }
 }

@@ -35,7 +35,14 @@ export type SourceName = (typeof SOURCE_NAMES)[number]
 export const LISTING_STATUSES = ['pending', 'active', 'removed', 'failed'] as const
 export type ListingStatus = (typeof LISTING_STATUSES)[number]
 
-export const EVENT_TYPES = ['call', 'comment', 'stage_change', 'viewing', 'price_change'] as const
+export const EVENT_TYPES = [
+  'call',
+  'comment',
+  'stage_change',
+  'viewing',
+  'price_change',
+  'edit',
+] as const
 export type EventType = (typeof EVENT_TYPES)[number]
 
 /** Етапи по авто. Зберігаються лише всередині події `stage_change` (payload.stage). */
@@ -65,6 +72,8 @@ export type EventPayload = {
   stage?: Stage
   old_price?: number
   new_price?: number
+  /** Які саме поля виправили руками — для події `edit`. */
+  fields?: string[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -148,6 +157,20 @@ export const listings = pgTable(
     photos: text('photos').array().notNull().default([]),
     /** Ключі наших копій фото у сховищі: listings/{auto_ria_id}/{n}-{hash8}.{ext}. */
     photosLocal: text('photos_local').array().notNull().default([]),
+
+    /**
+     * Колонки, які людина виправила руками. Парсер їх більше не чіпає: cron має
+     * оновлювати ціну, але не повертати марку, яку він колись витягнув невірно.
+     * Позначка на рівні поля, а не картки — інакше довелось би вибирати між
+     * «оновлюй усе» і «не оновлюй нічого».
+     */
+    manualFields: text('manual_fields').array().notNull().default([]),
+    /**
+     * Фото, додані руками. Окремо від `photos_local` навмисно: перерозбір
+     * перебудовує той масив із `photos` і видаляє зі сховища все зайве —
+     * ручні знімки він знищив би при першому ж прогоні.
+     */
+    photosManual: text('photos_manual').array().notNull().default([]),
 
     targetPriceUsd: integer('target_price_usd'),
     /** Ключове поле робочої черги на головному екрані. */

@@ -170,7 +170,7 @@ function FailedBody({ listing }: { listing: Listing }) {
         {listing.url}
       </a>
       <Link
-        href={`/listing/${listing.id}`}
+        href={`/listing/${listing.id}/edit`}
         className="mt-3 inline-flex h-8 items-center rounded-card border border-ink px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
       >
         Заповнити вручну
