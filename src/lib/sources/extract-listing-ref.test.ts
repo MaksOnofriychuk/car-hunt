@@ -63,6 +63,14 @@ describe('extractListingRef: OLX', () => {
     ).toEqual({ source: 'olx', id: 'wEfGh' })
   })
 
+  it('не спотикається на хвості пошукових параметрів', () => {
+    expect(
+      extractListingRef(
+        'https://www.olx.ua/d/uk/obyavlenie/honda-crv-2016-rk-ID10XrLz.html?search_reason=search%7Corganic',
+      ),
+    ).toEqual({ source: 'olx', id: '10XrLz' })
+  })
+
   it('віддає перевагу параметру ad_id', () => {
     expect(
       extractListingRef('https://www.olx.ua/uk/obyavlenie/avto-IDxYz12.html?ad_id=abc999'),

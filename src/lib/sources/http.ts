@@ -1,5 +1,7 @@
 import { and, count, eq, gte } from 'drizzle-orm'
 
+import { tls12Fetch } from './tls12'
+
 import { db } from '@/db'
 import { sourceRequests, type RequestKind, type SourceName } from '@/db/schema'
 
@@ -92,22 +94,38 @@ function waitForSlot(): Promise<void> {
 
 export async function politeFetch(
   url: string,
-  options: { source: SourceName; kind: RequestKind; accept?: string },
+  options: {
+    source: SourceName
+    kind: RequestKind
+    accept?: string
+    /**
+     * `tls12` — той самий запит, але через `node:https` зі стисненою до 1.2
+     * версією TLS. Потрібен для OLX: CloudFront ріже відбиток клієнта Node,
+     * і вбудований fetch отримує 403 навіть із браузерними заголовками.
+     * Подробиці — у `tls12.ts`.
+     */
+    transport?: 'auto' | 'tls12'
+  },
 ): Promise<Response> {
   if (options.kind === 'api') await assertQuota(options.source)
 
   await waitForSlot()
 
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': userAgent(),
-      Accept: options.accept ?? 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'uk,en;q=0.8',
-    },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    cache: 'no-store',
-    redirect: 'follow',
-  })
+  const headers = {
+    'User-Agent': userAgent(),
+    Accept: options.accept ?? 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'uk,en;q=0.8',
+  }
+
+  const response =
+    options.transport === 'tls12'
+      ? await tls12Fetch(url, { headers, timeoutMs: FETCH_TIMEOUT_MS })
+      : await fetch(url, {
+          headers,
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          cache: 'no-store',
+          redirect: 'follow',
+        })
 
   // Пишемо факт запиту навіть при помилці: квоту він усе одно зʼїв.
   await db.insert(sourceRequests).values({ source: options.source, kind: options.kind })

@@ -32,6 +32,13 @@ export type ListingSnapshot = {
   plateNumber?: string | null
   /** Ціна в гривні станом на парсинг — RIA показує обидві. */
   priceUah?: number | null
+  /**
+   * У якій валюті виставлене оголошення. RIA завжди показує і долар, і гривню,
+   * а OLX — щось одне; другу ціну рахуємо за курсом (`src/lib/rates.ts`).
+   * Порівняння «ціна змінилась» іде саме за валютою оголошення, інакше подію
+   * смикав би курс.
+   */
+  priceCurrency?: 'UAH' | 'USD'
   photos?: string[]
   descriptionText?: string | null
   sellerName?: string | null
@@ -76,6 +83,20 @@ export class ListingGoneError extends Error {
   ) {
     super(`Оголошення більше немає на ${source}: ${url}`)
     this.name = 'ListingGoneError'
+  }
+}
+
+/**
+ * Майданчик тимчасово не пускає: WAF, бан по IP, капча. Це не зламані дані і не
+ * зникле оголошення — картка просто лишається в черзі й пробує пізніше.
+ */
+export class SourceBlockedError extends Error {
+  constructor(
+    readonly source: SourceName,
+    readonly status: number,
+  ) {
+    super(`${source} не пустив (${status}) — пробуємо пізніше`)
+    this.name = 'SourceBlockedError'
   }
 }
 

@@ -4,10 +4,11 @@ import { db } from '@/db'
 import { events, listings, priceHistory, type Author, type Listing } from '@/db/schema'
 import { linkSeller } from '@/db/sellers'
 import { archiveListing } from '@/lib/archive'
+import { bothPrices } from '@/lib/rates'
 import { canonicalizeRef } from '@/lib/sources/canonicalize'
 import { refForInput, sourceFor } from '@/lib/sources'
 import { QuotaExceededError } from '@/lib/sources/http'
-import { ListingGoneError, SourceNotReadyError } from '@/lib/sources/types'
+import { ListingGoneError, SourceBlockedError, SourceNotReadyError } from '@/lib/sources/types'
 
 /** Версія розбору. Піднімати, коли парсер став діставати щось нове. */
 export const PARSER_VERSION = 2
@@ -69,8 +70,16 @@ export async function parseListing(listingId: string): Promise<void> {
       id: listing.sourceId,
     })
 
+    // Майданчик дає ціну в одній валюті — другу доводимо за курсом.
+    const money = await bothPrices(snapshot)
     const previousPrice = listing.priceUsd
-    const price = snapshot.priceUsd ?? null
+    const price = money.priceUsd
+
+    // «Ціна змінилась» рахуємо у валюті оголошення: для OLX вона в гривні,
+    // і перерахунок у долари смикав би подію від курсу, а не від продавця.
+    const currency = snapshot.priceCurrency ?? 'USD'
+    const nativeBefore = currency === 'UAH' ? listing.priceUah : listing.priceUsd
+    const nativeAfter = currency === 'UAH' ? money.priceUah : money.priceUsd
 
     await db
       .update(listings)
@@ -91,7 +100,7 @@ export async function parseListing(listingId: string): Promise<void> {
         driveType: snapshot.driveType ?? listing.driveType,
         bodyType: snapshot.bodyType ?? listing.bodyType,
         plateNumber: snapshot.plateNumber ?? listing.plateNumber,
-        priceUah: snapshot.priceUah ?? listing.priceUah,
+        priceUah: money.priceUah ?? listing.priceUah,
         publishedAt: snapshot.publishedAt ?? listing.publishedAt,
         photos: snapshot.photos?.length ? snapshot.photos : listing.photos,
         snapshotRaw: snapshot.raw,
@@ -104,7 +113,7 @@ export async function parseListing(listingId: string): Promise<void> {
       await db.insert(priceHistory).values({ listingId: listing.id, priceUsd: price })
 
       // Подія лише про справжню зміну, а не про перший запис ціни.
-      if (previousPrice !== null && previousPrice !== price) {
+      if (previousPrice !== null && nativeBefore !== null && nativeBefore !== nativeAfter) {
         await db.insert(events).values({
           listingId: listing.id,
           author: listing.createdBy,
@@ -135,8 +144,13 @@ async function handleFailure(listing: Listing, error: unknown): Promise<void> {
     return
   }
 
-  // Квота вичерпана — це черга, а не помилка: лишаємо pending, cron добере.
-  if (error instanceof QuotaExceededError || error instanceof SourceNotReadyError) {
+  // Квота вичерпана або майданчик не пустив — це черга, а не помилка:
+  // лишаємо pending, cron добере.
+  if (
+    error instanceof QuotaExceededError ||
+    error instanceof SourceNotReadyError ||
+    error instanceof SourceBlockedError
+  ) {
     console.warn(`[ingest] ${listing.id} лишається в черзі: ${(error as Error).message}`)
     return
   }

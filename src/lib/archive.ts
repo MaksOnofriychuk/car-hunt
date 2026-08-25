@@ -30,8 +30,20 @@ const DEFAULT_BUDGET_MS = 40_000
 export function photoKey(listing: Listing, url: string, index: number): string {
   const hash = createHash('sha256').update(url).digest('hex').slice(0, 8)
   const prefix = storageKeyPrefix({ source: listing.source, id: listing.sourceId })
-  const ext = url.split('?')[0].split('.').pop()?.toLowerCase().slice(0, 5) || 'jpg'
-  return `${prefix}/${String(index).padStart(2, '0')}-${hash}.${ext}`
+  return `${prefix}/${String(index).padStart(2, '0')}-${hash}.${extFor(url)}`
+}
+
+/**
+ * Розширення шукаємо **в останньому сегменті шляху**, а не в усьому URL: у OLX
+ * адреса закінчується на `/image;s=1000x750`, і по крапці з домену в ключ лізло
+ * б сміття (`.com:4`), а `/api/files` віддавав би такий файл із неправильним
+ * типом. Немає розширення — jpg, саме його віддає CDN OLX.
+ */
+function extFor(url: string): string {
+  const path = url.split('?')[0].split('#')[0]
+  const name = path.slice(path.lastIndexOf('/') + 1)
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : ''
+  return /^[a-z0-9]{2,4}$/.test(ext) ? ext : 'jpg'
 }
 
 export type ArchiveResult = {

@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
       // фото оголошень з AUTO.RIA
       { protocol: 'https', hostname: 'cdn.riastatic.com' },
       { protocol: 'https', hostname: '*.riastatic.com' },
+      // фото оголошень з OLX
+      { protocol: 'https', hostname: 'ireland.apollo.olxcdn.com' },
+      { protocol: 'https', hostname: '*.olxcdn.com' },
       // заглушки для сідерських даних
       { protocol: 'https', hostname: 'picsum.photos' },
     ],

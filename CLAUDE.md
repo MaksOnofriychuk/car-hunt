@@ -45,6 +45,11 @@ drizzle/            # міграції   scripts/ — seed
   продавця». Характеристики — теж зі стану, по id вузлів
   (`src/lib/sources/autoria/specs.ts`); усе, під що немає колонки, живе
   в `snapshot_raw.specs`.
+- OLX: дані зі `window.__PRERENDERED_STATE__` (`state.ad.ad`), характеристики —
+  список `params` (пробіг там **у тисячах**). Ходимо через `transport: 'tls12'`:
+  CloudFront ріже TLS-відбиток Node, а не наш User-Agent. Ціна в гривні —
+  `price_usd` рахується за курсом НБУ з таблиці `exchange_rates`, а подія
+  `price_change` порівнює ціну **у валюті оголошення**.
 - Ліміт AUTO.RIA API: 30/год, 1000/міс — лічильник у `source_requests`, лише для
   `kind: 'api'`. Вичерпався — листинг лишається `pending`, cron добере. ≥2 с між запитами.
 - Продавці склеюються по `(source, source_user_id)`, телефон — додатковий ключ

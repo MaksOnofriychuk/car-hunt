@@ -222,6 +222,21 @@ export const sourceRequests = pgTable(
 )
 
 /**
+ * Курс долара на день. Лежить у базі, а не в памʼяті процесу: на Vercel процес
+ * не живе між запитами, і кеш у памʼяті означав би запит до НБУ мало не на
+ * кожен парсинг. Заразом лишається історія — за яким курсом рахувалась ціна.
+ */
+export const exchangeRates = pgTable('exchange_rates', {
+  /** День курсу за Києвом. */
+  date: date('date', { mode: 'string' }).primaryKey(),
+  /** Скільки гривень за долар. */
+  usdUah: numeric('usd_uah', { precision: 8, scale: 4, mode: 'number' }).notNull(),
+  /** Звідки взяли: nbu | env. */
+  source: text('source').notNull().default('nbu'),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
  * Журнал спроб входу. Дві задачі: rate limit по IP і слід того, хто заходив.
  * Пишеться і успіх, і невдача — без успіхів журнал не показав би, чи хтось таки зайшов.
  */
@@ -287,6 +302,7 @@ export type NewSeller = typeof sellers.$inferInsert
 export type Listing = typeof listings.$inferSelect
 export type NewListing = typeof listings.$inferInsert
 export type Event = typeof events.$inferSelect
+export type ExchangeRate = typeof exchangeRates.$inferSelect
 export type NewEvent = typeof events.$inferInsert
 export type PricePoint = typeof priceHistory.$inferSelect
 export type NewPricePoint = typeof priceHistory.$inferInsert

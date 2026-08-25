@@ -7,8 +7,11 @@ import { eq } from 'drizzle-orm'
 import { client, db } from '../src/db'
 import { listings, type Listing } from '../src/db/schema'
 import { archiveListing, photoKey } from '../src/lib/archive'
-import { PARSER_VERSION } from '../src/lib/ingest'
+import { PARSER_VERSION, parseListing } from '../src/lib/ingest'
+import { bothPrices } from '../src/lib/rates'
 import { parseListingHtml } from '../src/lib/sources/autoria/parse'
+import { parseListingOlx } from '../src/lib/sources/olx/parse'
+import type { ListingSnapshot } from '../src/lib/sources/types'
 import { storage } from '../src/lib/storage'
 
 /**
@@ -22,12 +25,15 @@ import { storage } from '../src/lib/storage'
  *   npm run reparse              — усі оголошення з архівом
  *   npm run reparse -- --dry     — тільки показати, нічого не змінювати
  *   npm run reparse -- --archive — ще й дозавантажити фото, яких бракує
+ *   npm run reparse -- --fetch   — сходити на майданчик заново (єдиний спосіб
+ *                                  розібрати картку, у якої архіву ще немає)
  *   npm run reparse -- 40318196  — одне оголошення за source_id
  */
 
 const args = process.argv.slice(2)
 const dryRun = args.includes('--dry')
 const withArchive = args.includes('--archive')
+const withFetch = args.includes('--fetch')
 const only = args.filter((arg) => !arg.startsWith('--'))
 
 type Report = {
@@ -41,11 +47,26 @@ type Report = {
   'грн': string
 }
 
+/** Парсер архіву за джерелом. Нове джерело — новий рядок тут. */
+function parseArchived(listing: Listing, html: string): ListingSnapshot | null {
+  if (listing.source === 'autoria') return parseListingHtml(html)
+  if (listing.source === 'olx') {
+    return parseListingOlx(html, { url: listing.url, expectId: listing.sourceId })
+  }
+  return null
+}
+
 async function reparse(listing: Listing): Promise<Report | null> {
   if (!listing.htmlRaw) return null
 
   const html = gunzipSync(Buffer.from(listing.htmlRaw, 'base64')).toString('utf8')
-  const snapshot = parseListingHtml(html)
+  const snapshot = parseArchived(listing, html)
+  if (!snapshot) {
+    console.warn(`[reparse] ${listing.sourceId}: для джерела «${listing.source}» парсера немає`)
+    return null
+  }
+
+  const money = await bothPrices(snapshot)
   const photos = snapshot.photos ?? []
   if (photos.length === 0) {
     console.warn(`[reparse] ${listing.sourceId}: у HTML не знайшлось жодного фото — пропускаю`)
@@ -97,7 +118,7 @@ async function reparse(listing: Listing): Promise<Report | null> {
     'файлів прибрано': removed,
     VIN: snapshot.vin ?? '—',
     номер: snapshot.plateNumber ?? '—',
-    'грн': snapshot.priceUah ? snapshot.priceUah.toLocaleString('uk-UA') : '—',
+    'грн': money.priceUah ? money.priceUah.toLocaleString('uk-UA') : '—',
   }
 
   if (dryRun) return report
@@ -110,7 +131,7 @@ async function reparse(listing: Listing): Promise<Report | null> {
       model: snapshot.model ?? listing.model,
       year: snapshot.year ?? listing.year,
       mileageKm: snapshot.mileageKm ?? listing.mileageKm,
-      priceUsd: snapshot.priceUsd ?? listing.priceUsd,
+      priceUsd: money.priceUsd ?? listing.priceUsd,
       city: snapshot.city ?? listing.city,
       vin: snapshot.vin ?? listing.vin,
       fuelType: snapshot.fuelType ?? listing.fuelType,
@@ -120,7 +141,7 @@ async function reparse(listing: Listing): Promise<Report | null> {
       driveType: snapshot.driveType ?? listing.driveType,
       bodyType: snapshot.bodyType ?? listing.bodyType,
       plateNumber: snapshot.plateNumber ?? listing.plateNumber,
-      priceUah: snapshot.priceUah ?? listing.priceUah,
+      priceUah: money.priceUah ?? listing.priceUah,
       publishedAt: snapshot.publishedAt ?? listing.publishedAt,
       descriptionText: listing.descriptionText ?? snapshot.descriptionText ?? null,
       photos,
@@ -139,7 +160,8 @@ async function reparse(listing: Listing): Promise<Report | null> {
 async function main(): Promise<void> {
   const rows = await db.select().from(listings)
   const targets = rows.filter(
-    (row) => row.htmlRaw && (only.length === 0 || only.includes(row.sourceId)),
+    (row) =>
+      (withFetch || row.htmlRaw) && (only.length === 0 || only.includes(row.sourceId)),
   )
 
   if (targets.length === 0) {
@@ -147,14 +169,24 @@ async function main(): Promise<void> {
     return
   }
 
+  // Сходити на майданчик — єдиний шлях для картки, яку ще жодного разу не
+  // розібрали: архіву в неї немає, перерозбирати нічого.
+  if (withFetch && !dryRun) {
+    for (const listing of targets) {
+      console.log(`[fetch] ${listing.sourceId} — йду на ${listing.source}…`)
+      await parseListing(listing.id)
+    }
+  }
 
   console.log(
     `${dryRun ? 'Пробний прогін' : 'Перерозбір'}: ${targets.length} оголошень зі збереженого HTML\n`,
   )
 
+  const fresh = withFetch ? await db.select().from(listings) : rows
   const reports: Report[] = []
   for (const listing of targets) {
-    const report = await reparse(listing)
+    const current = fresh.find((row) => row.id === listing.id) ?? listing
+    const report = await reparse(current)
     if (report) reports.push(report)
   }
 

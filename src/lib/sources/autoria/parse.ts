@@ -4,6 +4,7 @@ import { extractPhotos } from './photos'
 import { allTexts } from './sdui'
 import { extractSeller, type AutoRiaSeller } from './seller'
 import { extractSpecs, priceUsdFromState, type AutoRiaSpecs } from './specs'
+import { fillGaps, type Draft } from '../draft'
 import type { ListingSnapshot } from '../types'
 
 /**
@@ -18,24 +19,7 @@ import type { ListingSnapshot } from '../types'
  *   3. cheerio по DOM — останній рубіж, якщо перші два шари щось не дали
  */
 
-type Draft = Omit<ListingSnapshot, 'raw' | 'html'>
-
 const EMPTY: Draft = {}
-
-function fillGaps(target: Draft, extra: Draft): Draft {
-  const merged: Draft = { ...target }
-  for (const [key, value] of Object.entries(extra) as [keyof Draft, unknown][]) {
-    const current = merged[key]
-    const missing =
-      current === undefined ||
-      current === null ||
-      (Array.isArray(current) && current.length === 0)
-    if (missing && value !== undefined && value !== null) {
-      Object.assign(merged, { [key]: value })
-    }
-  }
-  return merged
-}
 
 /* ------------------------------- шар 1: ld+json ------------------------------ */
 
