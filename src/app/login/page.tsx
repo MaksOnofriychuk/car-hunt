@@ -1,9 +1,10 @@
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 import { PlateStrip } from '@/components/PlateStrip'
 import { loginBlockFor } from '@/db/login-attempts'
 import { clientIp } from '@/lib/request-ip'
-import { userNames } from '@/lib/users'
+import { LAST_AUTHOR_COOKIE } from '@/lib/session'
+import { isAuthor, userNames } from '@/lib/users'
 
 import { LoginForm } from './LoginForm'
 
@@ -15,7 +16,14 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>
 }) {
   const { next } = await searchParams
-  const block = await loginBlockFor(clientIp(await headers()))
+  const [block, jar] = await Promise.all([
+    loginBlockFor(clientIp(await headers())),
+    cookies(),
+  ])
+
+  // Хто заходив із цього пристрою минулого разу — форма підставить його сама.
+  const remembered = jar.get(LAST_AUTHOR_COOKIE)?.value
+  const lastAuthor = isAuthor(remembered) ? remembered : null
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[420px] flex-col justify-center px-4 py-10">
@@ -30,7 +38,7 @@ export default async function LoginPage({
           <span className="t-num">{Math.ceil(block.retryAfterSeconds / 60)}</span> хв.
         </p>
       ) : (
-        <LoginForm names={userNames()} next={next} />
+        <LoginForm names={userNames()} next={next} lastAuthor={lastAuthor} />
       )}
     </main>
   )

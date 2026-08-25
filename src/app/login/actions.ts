@@ -7,8 +7,10 @@ import { z } from 'zod'
 import { loginBlockFor, recordLoginAttempt } from '@/db/login-attempts'
 import { clientIp } from '@/lib/request-ip'
 import {
+  LAST_AUTHOR_COOKIE,
   SESSION_COOKIE,
   createSessionToken,
+  lastAuthorCookieOptions,
   passwordMatches,
   sessionCookieOptions,
 } from '@/lib/session'
@@ -69,6 +71,9 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 
   const store = await cookies()
   store.set(SESSION_COOKIE, await createSessionToken(parsed.data!.author), sessionCookieOptions)
+  // Хто заходив із цього пристрою — щоб наступного разу не вибирати себе знову.
+  // Це не автентифікація, а підказка формі: сама по собі вона нікуди не пускає.
+  store.set(LAST_AUTHOR_COOKIE, parsed.data!.author, lastAuthorCookieOptions)
 
   // Тільки внутрішні шляхи, щоб ?next= не став відкритим редиректом.
   const target = parsed.data!.next

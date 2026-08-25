@@ -13,9 +13,18 @@ const initialState: LoginState = { error: null }
  * Вхід — аркуш 00: пароль, вибір людини, широка кнопка. Пароль один на двох,
  * тому «хто ви» — це не автентифікація, а підпис під майбутніми подіями.
  */
-export function LoginForm({ names, next }: { names: Record<Author, string>; next?: string }) {
+export function LoginForm({
+  names,
+  next,
+  lastAuthor = null,
+}: {
+  names: Record<Author, string>
+  next?: string
+  /** Хто заходив із цього пристрою минулого разу — щоб не вибирати себе щоразу. */
+  lastAuthor?: Author | null
+}) {
   const [state, formAction, pending] = useActionState(login, initialState)
-  const [author, setAuthor] = useState<Author | null>(null)
+  const [author, setAuthor] = useState<Author | null>(lastAuthor)
   // Після досягнення ліміту наступний POST зустріне 429 у middleware,
   // а відповідь у форматі 429 зламала б серверну дію на клієнті. Тому замикаємо тут.
   const disabled = pending || state.blocked === true

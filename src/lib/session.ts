@@ -18,6 +18,25 @@ export const sessionCookieOptions = {
   maxAge: SESSION_MAX_AGE_SECONDS,
 } as const
 
+/**
+ * Хто востаннє заходив із цього пристрою. Живе окремо від сесії й переживає
+ * «вийти»: на екрані входу лишається вибраним той самий, і після виходу
+ * достатньо ввести пароль.
+ *
+ * Не httpOnly і нічого не підписує — це підказка формі, а не облікові дані:
+ * підмінити її означає лише обрати іншого зі списку, що й так доступний
+ * кнопкою. Сесію все одно видає лише правильний пароль.
+ */
+export const LAST_AUTHOR_COOKIE = 'car_hunt_author'
+
+export const lastAuthorCookieOptions = {
+  httpOnly: false,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: SESSION_MAX_AGE_SECONDS,
+} as const
+
 const encoder = new TextEncoder()
 let cachedKey: Promise<CryptoKey> | null = null
 
