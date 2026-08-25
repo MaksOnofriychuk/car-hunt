@@ -16,6 +16,7 @@
     "reparse": "tsx scripts/reparse.ts"
   },
   "dependencies": {
+    "@tanstack/react-table": "^9.1.2",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.2",
     "next": "15.5.23",

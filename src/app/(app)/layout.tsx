@@ -7,7 +7,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-dvh">
       <AppHeader name={name} />
-      <main className="mx-auto w-full max-w-[560px] px-3 pb-20 pt-3">{children}</main>
+      {/* Ширину обирає сторінка: черга в режимі таблиці широка, решта — вузька
+          колонка на 560, як було. */}
+      <main className="mx-auto w-full max-w-[1280px] px-3 pb-20 pt-3">{children}</main>
     </div>
   )
 }

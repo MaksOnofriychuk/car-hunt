@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { createPreset, removePreset } from '@/db/presets'
+import { setSellerNotes } from '@/db/sellers'
 import { requireAuthor } from '@/lib/auth'
 import type { FormState } from '@/lib/forms'
 
@@ -40,6 +41,26 @@ export async function deletePreset(_prev: FormState, formData: FormData): Promis
 
   await removePreset(id.data)
   revalidatePath('/')
+
+  return { error: null, ok: true }
+}
+
+/**
+ * Нотатки про продавця. Досі їх ніде не було записати — колонка існувала, а
+ * форми до неї не було.
+ */
+export async function saveSellerNotes(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAuthor()
+
+  const parsed = z
+    .object({ id: z.uuid(), notes: z.string().max(4000) })
+    .safeParse({ id: formData.get('id'), notes: formData.get('notes')?.toString() ?? '' })
+
+  if (!parsed.success) return { error: 'Продавця не знайдено', ok: false }
+
+  await setSellerNotes(parsed.data.id, parsed.data.notes.trim() || null)
+  revalidatePath(`/sellers/${parsed.data.id}`)
+  revalidatePath('/sellers')
 
   return { error: null, ok: true }
 }

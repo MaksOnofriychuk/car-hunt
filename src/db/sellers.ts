@@ -259,3 +259,8 @@ async function findOrCreate(listing: Listing, phone: string | null): Promise<Sel
 
   return created ?? null
 }
+
+/** Наші нотатки про продавця. Парсер їх не чіпає — це поле тільки людини. */
+export async function setSellerNotes(id: string, notes: string | null): Promise<void> {
+  await db.update(sellers).set({ notes }).where(eq(sellers.id, id))
+}

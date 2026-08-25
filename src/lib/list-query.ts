@@ -14,6 +14,7 @@ export type Range = { min: number | null; max: number | null }
 /** За чим сортуємо. `contact` — типове, воно ж «прострочені вгорі». */
 export const SORT_FIELDS = [
   'contact',
+  'title',
   'price',
   'target',
   'diff',

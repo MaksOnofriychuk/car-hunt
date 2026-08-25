@@ -30,7 +30,7 @@ export default async function NewListingPage({
   const { url } = await searchParams
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-[560px] space-y-4">
       <Link
         href="/"
         className="inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"

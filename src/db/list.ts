@@ -1,4 +1,4 @@
-import { count, desc, eq, isNotNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
 
 import { db } from './index'
 import { listWhere, listOrderBy, listRange, type ListJoins } from './list-filters'
@@ -158,14 +158,21 @@ function subqueries() {
   return { stageOf, lastEvent, lastNote, priceDrop }
 }
 
-export async function getListings(query: ListQuery): Promise<ListPage> {
+export async function getListings(
+  query: ListQuery,
+  /** Звузити до авто одного продавця — цим живе його сторінка. */
+  scope?: { sellerId?: string },
+): Promise<ListPage> {
   const { stageOf, lastEvent, lastNote, priceDrop } = subqueries()
 
   const joins: ListJoins = {
     stage: sql`${stageOf.stage}`,
     commentAt: sql`${lastNote.createdAt}`,
   }
-  const where = listWhere(query, joins)
+  const filters = listWhere(query, joins)
+  const where = scope?.sellerId
+    ? and(filters, eq(listings.sellerId, scope.sellerId))
+    : filters
   const { limit, offset } = listRange(query, MAX_PER_PAGE)
 
   const rowsQuery = db

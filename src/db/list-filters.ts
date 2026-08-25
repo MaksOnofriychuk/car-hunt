@@ -109,6 +109,8 @@ export function listOrderBy(query: ListQuery, joins: ListJoins): SQL[] {
 
 function sortColumn(field: SortField, joins: ListJoins): SQL {
   switch (field) {
+    case 'title':
+      return sql`${listings.title}`
     case 'price':
       return sql`${listings.priceUsd}`
     case 'target':

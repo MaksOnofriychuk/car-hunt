@@ -8,7 +8,7 @@
 
 ## Стек
 Next.js 15 (App Router) · TS strict · Tailwind v4 · ESLint 9 · npm · Drizzle + PostgreSQL
-(Neon) · Zod на вхідні дані · cheerio. Деплой Vercel, cron — GitHub Actions / Vercel Cron.
+(Neon) · Zod на вхідні дані · cheerio · TanStack Table (headless, лише черга). Деплой Vercel, cron — GitHub Actions / Vercel Cron.
 **Не додавати:** окремий бекенд (Nest), Redux, tRPC, GraphQL, Docker, мікросервіси.
 Тести — лише vitest на `extractListingRef`, решту не покривати.
 
@@ -50,6 +50,9 @@ drizzle/            # міграції   scripts/ — seed
   CloudFront ріже TLS-відбиток Node, а не наш User-Agent. Ціна в гривні —
   `price_usd` рахується за курсом НБУ з таблиці `exchange_rates`, а подія
   `price_change` порівнює ціну **у валюті оголошення**.
+- Режим черги (список/таблиця) і набір колонок — у cookie `car_hunt_view`:
+  сервер читає її при рендері, тому таблиця малюється одразу. Таблиця — тільки
+  з `lg`; нижня межа верстки 390 px.
 - Стан списку авто (фільтри, сортування, сторінка) живе **в URL**, не в памʼяті:
   `src/lib/list-query.ts` розбирає і збирає, `src/db/list.ts` — одна проєкція
   рядка для всіх списків, `src/db/list-filters.ts` — той самий білдер SQL.

@@ -1,18 +1,24 @@
+import { cookies } from 'next/headers'
+
 import { ListFilters } from '@/components/ListFilters'
 import { ListingCard } from '@/components/ListingCard'
+import { ListingTable, type TableRow } from '@/components/ListingTable'
 import { ListPager } from '@/components/ListPager'
 import { PasteBar } from '@/components/PasteBar'
 import { PendingPoller } from '@/components/PendingPoller'
 import { PresetBar } from '@/components/PresetBar'
 import { SortBar } from '@/components/SortBar'
+import { ViewToggle } from '@/components/ViewToggle'
 import { bucketByContact, getListings, listCities, type ListingRow } from '@/db/list'
 import { listPresets } from '@/db/presets'
 import { requireSession } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { todayInKyiv } from '@/lib/dates'
 import { isDefaultSort, parseListQuery, serializeListQuery } from '@/lib/list-query'
+import { displayPhotos } from '@/lib/photos'
 import type { Preset } from '@/lib/presets'
 import { userNames } from '@/lib/users'
+import { parseViewPrefs, VIEW_COOKIE } from '@/lib/view-prefs'
 
 export const metadata = { title: 'Черга — Car Hunt' }
 
@@ -32,11 +38,15 @@ export default async function QueuePage({
   const params = await searchParams
   const query = parseListQuery(params)
 
-  const [page, presets, cities] = await Promise.all([
+  const [page, presets, cities, jar] = await Promise.all([
     getListings(query),
     listPresets(),
     listCities(),
+    cookies(),
   ])
+
+  const prefs = parseViewPrefs(jar.get(VIEW_COOKIE)?.value)
+  const asTable = prefs.mode === 'table'
 
   const today = todayInKyiv()
   const names = userNames()
@@ -63,48 +73,77 @@ export default async function QueuePage({
       })()
     : [{ key: 'all', title: '', rows: page.rows, signal: false }]
 
+  // Фото для таблиці розбирає сервер: `displayPhotos` ходить у сховище, і
+  // клієнтському компоненту цього робити нічим.
+  const tableRows: TableRow[] = page.rows.map((row) => ({
+    row,
+    photo: displayPhotos(row.listing)[0] ?? null,
+  }))
+
   return (
     <div className="space-y-5">
-      <PasteBar />
-      <PendingPoller ids={pending} />
-      <PresetBar presets={saved} search={search} />
-      <ListFilters query={query} cities={cities} total={page.total} />
-      <SortBar query={query} />
+      <div className="mx-auto w-full max-w-[560px] space-y-5">
+        <PasteBar />
+        <PendingPoller ids={pending} />
+        <PresetBar presets={saved} search={search} />
+        <ListFilters query={query} cities={cities} total={page.total} />
+
+        <div className="flex items-center gap-2">
+          {/* На вузькому екрані перемикача немає — там таблиці не буде ніколи. */}
+          <ViewToggle prefs={prefs} />
+          {asTable ? null : <SortBar query={query} />}
+        </div>
+      </div>
 
       {page.total === 0 ? (
-        <p className="rounded-card border border-line bg-white p-4 text-[14px] text-muted">
+        <p className="mx-auto w-full max-w-[560px] rounded-card border border-line bg-white p-4 text-[14px] text-muted">
           {search
             ? 'Під ці фільтри не підходить жодне авто. Спробуй прибрати частину.'
             : 'Черга порожня. Встав посилання на оголошення зверху — картка зʼявиться тут.'}
         </p>
       ) : null}
 
-      {sections.map((section) =>
-        section.rows.length === 0 ? null : (
-          <section key={section.key} className="space-y-2">
-            {section.title ? (
-              <SectionTitle
-                title={section.title}
-                count={section.rows.length}
-                signal={section.signal}
-              />
-            ) : null}
+      {/* Таблиця займає всю ширину, список лишається вузькою колонкою. */}
+      {asTable && page.total > 0 ? (
+        <div className="hidden lg:block">
+          <ListingTable
+            rows={tableRows}
+            prefs={prefs}
+            context={{ query, today, search, viewer: author, names }}
+          />
+        </div>
+      ) : null}
 
-            {section.rows.map((row: ListingRow) => (
-              <ListingCard
-                key={row.listing.id}
-                row={row}
-                today={today}
-                viewer={author}
-                names={names}
-                search={search}
-              />
-            ))}
-          </section>
-        ),
-      )}
+      <div className={cn('mx-auto w-full max-w-[560px] space-y-5', asTable && 'lg:hidden')}>
+        {sections.map((section) =>
+          section.rows.length === 0 ? null : (
+            <section key={section.key} className="space-y-2">
+              {section.title ? (
+                <SectionTitle
+                  title={section.title}
+                  count={section.rows.length}
+                  signal={section.signal}
+                />
+              ) : null}
 
-      <ListPager query={query} total={page.total} />
+              {section.rows.map((row: ListingRow) => (
+                <ListingCard
+                  key={row.listing.id}
+                  row={row}
+                  today={today}
+                  viewer={author}
+                  names={names}
+                  search={search}
+                />
+              ))}
+            </section>
+          ),
+        )}
+      </div>
+
+      <div className="mx-auto w-full max-w-[560px]">
+        <ListPager query={query} total={page.total} />
+      </div>
     </div>
   )
 }

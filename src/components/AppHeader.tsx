@@ -18,7 +18,7 @@ export function AppHeader({ name }: { name: string }) {
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-concrete">
-      <div className="mx-auto flex h-12 w-full max-w-[560px] items-center gap-3 px-3">
+      <div className="mx-auto flex h-12 w-full max-w-[1280px] items-center gap-3 px-3">
         <Link href="/" aria-label="Car Hunt">
           <PlateStrip label="Car Hunt" size="sm" />
         </Link>

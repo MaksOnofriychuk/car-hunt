@@ -58,7 +58,7 @@ export default async function ListingPage({
   const contact = contactLabel(listing.nextContactAt, todayInKyiv())
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-[560px] space-y-4">
       <Link
         href={backHref}
         className="inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
@@ -182,8 +182,16 @@ export default async function ListingPage({
         <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
           Продавець
         </span>
+        {/* Клік по продавцю веде на його сторінку: там усі його авто і вся
+            історія розмов, а не тільки це оголошення. */}
         <p className="mt-1 text-[15px] font-semibold">
-          {seller?.name ?? hint.name ?? 'Без імені'}
+          {seller ? (
+            <Link href={`/sellers/${seller.id}`} className="underline decoration-line underline-offset-4">
+              {seller.name ?? 'Без імені'}
+            </Link>
+          ) : (
+            (hint.name ?? 'Без імені')
+          )}
         </p>
         <p className="text-[12px] text-muted">
           {SELLER_TYPES[seller?.type ?? hint.type ?? 'unknown']}
