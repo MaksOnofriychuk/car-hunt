@@ -17,8 +17,8 @@ export function ListPager({ query, total }: { query: ListQuery; total: number })
   const to = per ? Math.min(query.page * per, total) : Math.min(total, MAX_PER_PAGE)
 
   return (
-    <nav className="flex items-center gap-2 rounded-card border border-line bg-card p-3">
-      <span className="font-mono text-[12px] tabular-nums text-muted">
+    <nav className="surface flex items-center gap-2 p-3">
+      <span className="t-num text-[12px] text-faint">
         {from}–{to} з {total}
       </span>
 
@@ -26,7 +26,7 @@ export function ListPager({ query, total }: { query: ListQuery; total: number })
         {per === null ? (
           <Link
             href={listHref({ ...query, per: PER_PAGE, page: 1 })}
-            className="h-8 rounded-card border border-line px-2.5 text-[11px] font-semibold uppercase leading-8 tracking-[0.08em] text-muted"
+            className="chip"
           >
             По {PER_PAGE}
           </Link>
@@ -35,7 +35,7 @@ export function ListPager({ query, total }: { query: ListQuery; total: number })
             <PageLink query={query} page={query.page - 1} disabled={query.page <= 1}>
               ←
             </PageLink>
-            <span className="font-mono text-[12px] tabular-nums">
+            <span className="t-num text-[12px]">
               {query.page} / {pages}
             </span>
             <PageLink query={query} page={query.page + 1} disabled={query.page >= pages}>
@@ -43,7 +43,7 @@ export function ListPager({ query, total }: { query: ListQuery; total: number })
             </PageLink>
             <Link
               href={listHref({ ...query, per: 'all', page: 1 })}
-              className="ml-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-plate"
+              className="t-micro ml-1 text-accent-lit"
             >
               Показати всі
             </Link>
@@ -67,16 +67,14 @@ function PageLink({
 }) {
   if (disabled) {
     return (
-      <span className="h-8 w-8 rounded-card border border-line text-center text-[13px] leading-8 text-muted opacity-40">
-        {children}
-      </span>
+      <span className="chip w-9 opacity-40">{children}</span>
     )
   }
 
   return (
     <Link
       href={listHref({ ...query, page })}
-      className={cn('h-8 w-8 rounded-card border border-ink text-center text-[13px] leading-8')}
+      className={cn('chip tap w-9')}
     >
       {children}
     </Link>

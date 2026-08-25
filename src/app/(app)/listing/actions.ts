@@ -23,6 +23,7 @@ import { listings, SELLER_TYPES, STAGES, type SellerType } from '@/db/schema'
 import { addSellerPhone, saveManualSeller } from '@/db/sellers'
 import { getSettings } from '@/db/settings'
 import { manualRef } from '@/lib/sources'
+import { storage } from '@/lib/storage'
 import { requireAuthor } from '@/lib/auth'
 import { kyivDatePlus } from '@/lib/dates'
 import { CALL_OUTCOME_ORDER } from '@/lib/events'
@@ -195,6 +196,42 @@ export async function saveNextContact(_prev: FormState, formData: FormData): Pro
 
   await setNextContactAt(listingId.data, date)
   refresh(listingId.data)
+
+  return { error: null, ok: true }
+}
+
+/**
+ * Видалити назавжди. Це єдина дія в застосунку, яка справді стирає дані:
+ * зникає картка, весь її архів, історія цін і всі події по ній (каскад по
+ * зовнішніх ключах). Локальні копії фото прибираємо теж — інакше вони лежали б
+ * у сховищі без жодного посилання.
+ *
+ * Проти принципу «архів назавжди» зі SPEC, тому кнопка живе під «···» і питає
+ * підтвердження: випадково натиснути її не можна.
+ */
+export async function removeListing(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAuthor()
+
+  const listingId = listingIdSchema.safeParse(field(formData, 'listingId'))
+  if (!listingId.success) return { error: NOT_FOUND, ok: false }
+  if (field(formData, 'confirm') !== 'yes') return { error: 'Не підтверджено', ok: false }
+
+  const [row] = await db
+    .select({ local: listings.photosLocal, manual: listings.photosManual })
+    .from(listings)
+    .where(eq(listings.id, listingId.data))
+    .limit(1)
+  if (!row) return { error: NOT_FOUND, ok: false }
+
+  const files = storage()
+  await Promise.all(
+    [...row.local, ...row.manual].map((key) => files.remove(key).catch(() => undefined)),
+  )
+
+  await db.delete(listings).where(eq(listings.id, listingId.data))
+
+  revalidatePath('/')
+  revalidatePath('/sellers')
 
   return { error: null, ok: true }
 }

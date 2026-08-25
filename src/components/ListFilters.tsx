@@ -1,18 +1,24 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { SELLER_TYPES, SOURCE_NAMES, type SellerType, type SourceName } from '@/db/schema'
+import { SELLER_TYPES, SOURCE_NAMES, type SellerType } from '@/db/schema'
+import { SOURCE_LABELS } from '@/lib/sources/labels'
 import { cn } from '@/lib/cn'
 import {
   DEFAULT_QUERY,
   DUE_VALUES,
   listHref,
+  QUICK_SORTS,
+  SORT_LABELS,
+  toggleSort,
   withFilters,
   type Due,
   type ListQuery,
   type Range,
+  type SortField,
 } from '@/lib/list-query'
 import { STAGES, STAGE_LABELS, type Stage } from '@/lib/stages'
 
@@ -23,13 +29,6 @@ import { STAGES, STAGE_LABELS, type Stage } from '@/lib/stages'
  * Панель згорнута, поки фільтрів немає. Активні завжди видно чипами — інакше
  * легко забути, чому список раптом порожній.
  */
-
-const SOURCE_LABELS: Record<SourceName, string> = {
-  autoria: 'AUTO.RIA',
-  olx: 'OLX',
-  telegram: 'Telegram',
-  manual: 'Руками',
-}
 
 const SELLER_LABELS: Record<SellerType, string> = {
   owner: 'Власник',
@@ -55,6 +54,7 @@ export function ListFilters({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [sorting, setSorting] = useState(false)
   const [draft, setDraft] = useState(query)
 
   // Після навігації (чип, пресет, «назад») URL — головніший за локальний стан.
@@ -66,24 +66,71 @@ export function ListFilters({
   const chips = activeChips(query)
 
   return (
-    <section className="rounded-card border border-line bg-card p-3">
+    <section className="surface p-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className={cn(
-            'h-8 rounded-card border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]',
-            open || chips.length > 0 ? 'border-ink' : 'border-line text-muted',
-          )}
+          className={cn('chip tap', (open || chips.length > 0) && 'chip-on')}
         >
           Фільтри{chips.length > 0 ? ` · ${chips.length}` : ''}
         </button>
 
-        <span className="ml-auto font-mono text-[12px] tabular-nums text-muted">
-          {total} авто
-        </span>
+        <button
+          type="button"
+          onClick={() => setSorting((value) => !value)}
+          aria-expanded={sorting}
+          className={cn('chip tap', (sorting || query.sort !== null) && 'chip-on')}
+        >
+          Сортувати{query.sort ? ` · ${SORT_LABELS[query.sort.field]}` : ''}
+        </button>
+
+        <span className="t-num ml-auto text-[12px] text-faint">{total} авто</span>
       </div>
+
+      {sorting ? (
+        // Вибір, а не набір посилань: перемикач із сегментів показує, що
+        // активним може бути тільки одне поле (і один напрям).
+        <div className="mt-2 space-y-2 border-t border-edge pt-2">
+          {/* Один ряд сегментів, що гортається вбік: сітка з семи полів на
+              390px розсипалась на три ряди різної висоти. */}
+          <div className="sunken flex gap-1 overflow-x-auto rounded-control p-1">
+            <SortSegment query={query} field={null} active={query.sort === null}>
+              Типове
+            </SortSegment>
+            {QUICK_SORTS.map((field) => (
+              <SortSegment
+                key={field}
+                query={query}
+                field={field}
+                active={query.sort?.field === field}
+              >
+                {SORT_LABELS[field]}
+              </SortSegment>
+            ))}
+          </div>
+
+          {query.sort ? (
+            <div className="sunken flex gap-1 rounded-control p-1">
+              {(['asc', 'desc'] as const).map((dir) => (
+                <Link
+                  key={dir}
+                  href={listHref({ ...query, sort: { field: query.sort!.field, dir }, page: 1 })}
+                  className={cn(
+                    'flex h-9 flex-1 items-center justify-center rounded-chip text-[13px]',
+                    query.sort?.dir === dir
+                      ? 'bg-accent font-semibold text-white'
+                      : 'text-muted hover:text-ink',
+                  )}
+                >
+                  {dir === 'asc' ? '↑ зростання' : '↓ спадання'}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {chips.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -92,7 +139,7 @@ export function ListFilters({
               key={chip.label}
               type="button"
               onClick={() => go(withFilters(query, chip.clear))}
-              className="rounded-card border border-ink px-1.5 py-0.5 text-[11px]"
+              className="chip"
             >
               {chip.label} ✕
             </button>
@@ -100,7 +147,7 @@ export function ListFilters({
           <button
             type="button"
             onClick={() => go({ ...DEFAULT_QUERY, sort: query.sort, per: query.per })}
-            className="px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+            className="t-micro tap px-1 text-faint hover:text-ink"
           >
             Скинути
           </button>
@@ -108,7 +155,7 @@ export function ListFilters({
       ) : null}
 
       {open ? (
-        <div className="mt-3 space-y-3 border-t border-line pt-3">
+        <div className="mt-3 space-y-3 border-t border-edge pt-3">
           <div className="grid grid-cols-2 gap-2">
             <RangeField
               label="Ціна, $"
@@ -125,15 +172,13 @@ export function ListFilters({
           </div>
 
           <label className="block">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-              Місто
-            </span>
+            <span className="t-micro text-faint">Місто</span>
             <input
               list="filter-cities"
               value={draft.city ?? ''}
               onChange={(event) => patch({ city: event.target.value || null })}
               placeholder="Будь-яке"
-              className="mt-1 h-9 w-full rounded-card border border-line bg-card px-2.5 text-[14px] placeholder:text-muted"
+              className="field mt-1"
             />
             <datalist id="filter-cities">
               {cities.map((city) => (
@@ -218,14 +263,14 @@ export function ListFilters({
                 go(withFilters(draft, {}))
                 setOpen(false)
               }}
-              className="h-10 flex-1 rounded-card border border-ink bg-ink text-[11px] font-semibold uppercase tracking-[0.08em] text-white"
+              className="btn btn-accent tap flex-1"
             >
               Показати
             </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="h-10 rounded-card border border-line px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+              className="h-10 rounded-card border border-edge px-3 t-micro text-faint"
             >
               Згорнути
             </button>
@@ -245,9 +290,7 @@ function toggle<T>(list: T[], value: T): T[] {
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-        {label}
-      </span>
+      <span className="t-micro text-faint">{label}</span>
       <div className="mt-1 flex flex-wrap gap-1.5">{children}</div>
     </div>
   )
@@ -267,13 +310,37 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cn(
-        'h-8 rounded-card border px-2 text-[12px]',
-        active ? 'border-ink bg-concrete font-semibold' : 'border-line text-muted',
-      )}
+      className={cn('chip tap', active && 'chip-on')}
     >
       {children}
     </button>
+  )
+}
+
+/** Сегмент перемикача сортування. Порожнє поле — повернення до типового. */
+function SortSegment({
+  query,
+  field,
+  active,
+  children,
+}: {
+  query: ListQuery
+  field: SortField | null
+  active: boolean
+  children: React.ReactNode
+}) {
+  const href = field === null ? { ...query, sort: null, page: 1 } : toggleSort(query, field)
+
+  return (
+    <Link
+      href={listHref(href)}
+      className={cn(
+        'flex h-9 shrink-0 items-center justify-center rounded-chip px-3 text-[13px]',
+        active ? 'bg-accent font-semibold text-white' : 'text-muted hover:text-ink',
+      )}
+    >
+      {children}
+    </Link>
   )
 }
 
@@ -293,24 +360,22 @@ function RangeField({
 
   return (
     <div>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-        {label}
-      </span>
+      <span className="t-micro text-faint">{label}</span>
       <div className="mt-1 flex items-center gap-1">
         <input
           inputMode="numeric"
           value={value.min ?? ''}
           onChange={(event) => set('min', event.target.value)}
           placeholder="від"
-          className="h-9 w-full min-w-0 rounded-card border border-line bg-card px-2 font-mono text-[13px] tabular-nums placeholder:font-sans placeholder:text-muted"
+          className="field field-num min-w-0 placeholder:font-sans placeholder:text-left"
         />
-        <span className="text-[12px] text-muted">–</span>
+        <span className="t-body text-faint">–</span>
         <input
           inputMode="numeric"
           value={value.max ?? ''}
           onChange={(event) => set('max', event.target.value)}
           placeholder="до"
-          className="h-9 w-full min-w-0 rounded-card border border-line bg-card px-2 font-mono text-[13px] tabular-nums placeholder:font-sans placeholder:text-muted"
+          className="field field-num min-w-0 placeholder:font-sans placeholder:text-left"
         />
       </div>
     </div>

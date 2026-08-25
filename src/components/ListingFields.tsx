@@ -2,18 +2,16 @@
 
 import { useActionState, useEffect, useState } from 'react'
 
-import {
-  saveNextContact,
-  saveTargetPrice,
-  toggleArchived,
-} from '@/app/(app)/listing/actions'
+import { DateField } from './DateField'
+
+import { saveNextContact, saveTargetPrice, toggleArchived } from '@/app/(app)/listing/actions'
 import { cn } from '@/lib/cn'
-import { formatUsd } from '@/lib/format'
+import { formatNumber } from '@/lib/format'
 import { IDLE } from '@/lib/forms'
 
 /**
- * Два поля, які редагуються в один тап (SPEC, «Інтерфейс»), і перемикач черги.
- * Усе, що людина міняє на картці руками, окрім телефону продавця.
+ * Поля, які людина міняє на картці руками: цільова ціна, дата наступного
+ * контакту і перемикач черги. Усе редагується в один тап, без модалок.
  */
 
 /** Цільова ціна: тап по числу відкриває поле, Enter або «ок» зберігає. */
@@ -27,21 +25,19 @@ export function TargetPrice({ listingId, value }: { listingId: string; value: nu
 
   if (!open) {
     return (
-      <div className="flex items-baseline gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="font-mono text-[16px] font-semibold tabular-nums underline decoration-line underline-offset-4"
-        >
-          {formatUsd(value)}
-        </button>
-        {state.error ? <span className="text-[12px] font-semibold">{state.error}</span> : null}
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Змінити цільову ціну"
+        className="t-num text-[17px] text-ink transition-colors duration-(--t-instant) hover:text-accent-lit"
+      >
+        {value === null ? '—' : formatNumber(value)}
+      </button>
     )
   }
 
   return (
-    <form action={formAction} className="flex items-center gap-1.5">
+    <form action={formAction} className="flex items-center justify-end gap-1.5">
       <input type="hidden" name="listingId" value={listingId} />
       <input
         name="price"
@@ -50,27 +46,21 @@ export function TargetPrice({ listingId, value }: { listingId: string; value: nu
         autoFocus
         defaultValue={value ?? ''}
         placeholder="$"
-        className="h-9 w-[110px] rounded-card border border-line bg-card px-2.5 text-right font-mono text-[15px] tabular-nums placeholder:text-muted"
+        aria-label="Цільова ціна"
+        className="field field-num w-[104px]"
       />
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-9 shrink-0 rounded-card border border-ink px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
-      >
+      <button type="submit" disabled={pending} className="btn tap shrink-0 px-2.5">
         Ок
       </button>
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="h-9 shrink-0 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
-      >
-        Скасувати
-      </button>
+      {state.error ? <span className="t-body text-danger">{state.error}</span> : null}
     </form>
   )
 }
 
-/** Кнопки «коли дзвонити» зі SPEC. Кожна — один тап і одразу запис. */
+/**
+ * Коли дзвонити. Чотири кнопки-пресети — це 90% випадків, і кожна з них одразу
+ * запис; поруч календар для решти.
+ */
 const PRESETS: { days: string; label: string }[] = [
   { days: '0', label: 'сьогодні' },
   { days: '3', label: '+3 дні' },
@@ -100,22 +90,30 @@ export function ContactDate({
             name="when"
             value={preset.days}
             disabled={pending}
-            className="h-9 rounded-card border border-line text-[11px] font-semibold disabled:opacity-50"
+            className="chip tap"
           >
             {preset.label}
           </button>
         ))}
       </div>
 
+      <div className="mt-1.5 flex items-center gap-2">
+        {/* Календар — для дат, яких немає серед пресетів: «подзвонити 3 вересня». */}
+        <DateField name="when" ariaLabel="Інша дата" className="min-w-0 flex-1" />
+        <button type="submit" disabled={pending} className="btn tap shrink-0 px-2.5">
+          Ок
+        </button>
+      </div>
+
       <div className="mt-1.5 flex items-baseline gap-2">
-        {state.error ? <span className="text-[12px] font-semibold">{state.error}</span> : null}
+        {state.error ? <span className="t-body text-danger">{state.error}</span> : null}
         {hasDate ? (
           <button
             type="submit"
             name="when"
             value="none"
             disabled={pending}
-            className="ml-auto text-[11px] font-semibold uppercase tracking-[0.08em] text-muted disabled:opacity-50"
+            className="t-micro ml-auto text-faint transition-colors duration-(--t-instant) hover:text-ink disabled:opacity-50"
           >
             Прибрати дату
           </button>
@@ -129,13 +127,7 @@ export function ContactDate({
  * Прибрати з черги або повернути. Це не видалення: картка, архів і стрічка
  * лишаються, авто просто не показується на головному екрані.
  */
-export function ArchiveToggle({
-  listingId,
-  archived,
-}: {
-  listingId: string
-  archived: boolean
-}) {
+export function ArchiveToggle({ listingId, archived }: { listingId: string; archived: boolean }) {
   const [state, formAction, pending] = useActionState(toggleArchived, IDLE)
 
   return (
@@ -145,14 +137,11 @@ export function ArchiveToggle({
       <button
         type="submit"
         disabled={pending}
-        className={cn(
-          'h-9 rounded-card border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50',
-          archived ? 'border-ink' : 'border-line text-muted',
-        )}
+        className={cn('chip tap', archived && 'chip-on')}
       >
         {archived ? 'Повернути в чергу' : 'Прибрати з черги'}
       </button>
-      {state.error ? <span className="text-[12px] font-semibold">{state.error}</span> : null}
+      {state.error ? <span className="t-body text-danger">{state.error}</span> : null}
     </form>
   )
 }

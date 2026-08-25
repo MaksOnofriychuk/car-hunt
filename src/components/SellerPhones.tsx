@@ -50,7 +50,7 @@ export function SellerPhones({
             <a
               key={phone}
               href={`tel:${phone}`}
-              className="inline-flex h-9 items-center rounded-card border border-ink px-2.5 font-mono text-[13px] tabular-nums"
+              className="btn tap t-num px-3 text-[14px]"
             >
               {formatPhone(phone)}
             </a>
@@ -67,12 +67,12 @@ export function SellerPhones({
             inputMode="tel"
             autoFocus
             placeholder={masked ?? '+380 __ ___ __ __'}
-            className="h-10 min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 font-mono text-[14px] tabular-nums placeholder:text-muted"
+            className="field field-num min-w-0 flex-1 text-left"
           />
           <button
             type="submit"
             disabled={pending}
-            className="h-10 shrink-0 rounded-card border border-ink bg-card px-3 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+            className="btn tap shrink-0 px-3"
           >
             {pending ? 'Пишу…' : 'Зберегти'}
           </button>
@@ -80,12 +80,12 @@ export function SellerPhones({
       ) : (
         <div className="mt-2 flex items-center gap-2">
           {phones.length === 0 && masked ? (
-            <span className="font-mono text-[13px] tabular-nums text-muted">{masked}</span>
+            <span className="t-num text-[14px] text-faint">{masked}</span>
           ) : null}
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="h-9 shrink-0 rounded-card border border-ink px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+            className="chip tap shrink-0"
           >
             {phones.length === 0 ? 'Додати номер' : 'Ще номер'}
           </button>
@@ -93,15 +93,15 @@ export function SellerPhones({
       )}
 
       {phones.length === 0 && !masked && !open ? (
-        <p className="mt-1.5 text-[12px] text-muted">
+        <p className="t-body mt-1.5 text-faint">
           Номера немає ні в нас, ні на сторінці оголошення.
         </p>
       ) : null}
 
-      {state.error ? <p className="mt-1.5 text-[12px] font-semibold">{state.error}</p> : null}
+      {state.error ? <p className="t-body mt-1.5 text-danger">{state.error}</p> : null}
 
       {warnings.length > 0 ? (
-        <p className="mt-2 border-l-2 border-ink pl-2 text-[12px] leading-snug">
+        <p className="t-body sunken mt-2 border-l-2 border-l-warn px-2.5 py-2 text-muted">
           Цей номер уже записаний{' '}
           {warnings.length === 1 ? 'у продавця' : 'у продавців'}{' '}
           {warnings.map((seller, index) => (
@@ -111,7 +111,7 @@ export function SellerPhones({
             </span>
           ))}
           . Можливо, це та сама людина —{' '}
-          <Link href="/sellers" className="text-plate underline underline-offset-2">
+          <Link href="/sellers" className="text-accent-lit underline underline-offset-2">
             подивись у продавцях
           </Link>
           .

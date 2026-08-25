@@ -23,7 +23,16 @@ export type SellerStats = {
   lastContact: Date | null
 }
 
-export type SellerListRow = SellerStats & { seller: Seller }
+/** Авто продавця коротким рядком — стільки, скільки треба картці в списку. */
+export type SellerCar = {
+  id: string
+  title: string | null
+  priceUsd: number | null
+  publishedAt: Date | null
+  removed: boolean
+}
+
+export type SellerListRow = SellerStats & { seller: Seller; cars: SellerCar[] }
 
 export type SellersSort = 'cars' | 'contact'
 
@@ -100,6 +109,34 @@ export async function getSellerRows(sort: SellersSort): Promise<SellerListRow[]>
       sql`${sellers.name} asc nulls last`,
     )
 
+  // Авто всіх продавців одним запитом: на кожній картці має бути видно, що
+  // саме людина продає, а не тільки скільки штук (аркуш 07).
+  const cars = await db
+    .select({
+      sellerId: listings.sellerId,
+      id: listings.id,
+      title: listings.title,
+      priceUsd: listings.priceUsd,
+      publishedAt: listings.publishedAt,
+      status: listings.status,
+    })
+    .from(listings)
+    .where(isNotNull(listings.sellerId))
+    .orderBy(desc(listings.priceUsd))
+
+  const bySeller = new Map<string, SellerCar[]>()
+  for (const car of cars) {
+    const list = bySeller.get(car.sellerId!) ?? []
+    list.push({
+      id: car.id,
+      title: car.title,
+      priceUsd: car.priceUsd,
+      publishedAt: car.publishedAt,
+      removed: car.status === 'removed',
+    })
+    bySeller.set(car.sellerId!, list)
+  }
+
   return rows.map((row) => ({
     seller: row.seller,
     total: row.total,
@@ -107,6 +144,7 @@ export async function getSellerRows(sort: SellersSort): Promise<SellerListRow[]>
     avgPrice: row.avgPrice,
     drops: row.drops ?? 0,
     lastContact: asDate(row.lastContact),
+    cars: bySeller.get(row.seller.id) ?? [],
   }))
 }
 

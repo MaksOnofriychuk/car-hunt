@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <rect width="180" height="180" fill="#06070A"/>
+  <rect x="14" y="58" width="152" height="64" rx="10" fill="#EDF1F5"/>
+  <path d="M14 68a10 10 0 0 1 10-10h30v64H24a10 10 0 0 1-10-10V68z" fill="#0057B8"/>
+  <rect x="29" y="72" width="20" height="4" rx="2" fill="#FFFFFF" opacity=".8"/>
+  <text x="39" y="106" font-family="ui-monospace, Menlo, monospace" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">UA</text>
+  <text x="112" y="106" font-family="ui-monospace, Menlo, monospace" font-size="34" font-weight="600" fill="#10151D" text-anchor="middle" letter-spacing="4">CAR</text>
+</svg>

@@ -46,3 +46,7 @@ next-env.d.ts
 # локальне сховище копій фото (STORAGE_DRIVER=local)
 /storage
 .env
+
+# знімки екранів і сесія для них — локальне, не в репозиторій
+.auth
+design/shots

@@ -2,7 +2,7 @@ import { and, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
 
 import { db } from './index'
 import { listWhere, listOrderBy, listRange, type ListJoins } from './list-filters'
-import { events, listings, sellers } from './schema'
+import { events, listings, priceHistory, sellers } from './schema'
 import type { Author, EventType, Listing, SellerType } from './schema'
 
 import { todayInKyiv } from '@/lib/dates'
@@ -59,13 +59,15 @@ export type RowEvent = {
 export type ListingRow = {
   listing: ListingSummary
   stage: Stage
-  seller: { id: string; name: string | null; type: SellerType } | null
+  seller: { id: string; name: string | null; type: SellerType; phones: string[] } | null
   /** Остання подія будь-якого типу — для підпису «хто і коли». */
   lastEvent: RowEvent | null
   /** Остання подія з текстом — для цитати. Зміна етапу тексту не має. */
   lastNote: RowEvent | null
-  /** На скільки впала ціна в останній зміні. Причина подзвонити саме сьогодні. */
+  /** На скільки впала ціна від першого спостереження. Причина подзвонити. */
   priceDrop: number | null
+  /** За скільки днів вона впала — без цього число «−700» ні про що. */
+  priceDropDays: number | null
 }
 
 export type ListPage = {
@@ -138,21 +140,31 @@ function subqueries() {
       .orderBy(events.listingId, desc(events.createdAt)),
   )
 
+  /**
+   * Падіння ціни за весь час спостережень, а не в останньому кроці: на картці
+   * стоїть «↓ 700 за 12 днів», і обидва числа мусять бути про один період.
+   * Зростання падінням не рахуємо — тоді чипа просто немає.
+   */
   const priceDrop = db.$with('price_drop').as(
     db
-      .selectDistinctOn([events.listingId], {
-        listingId: events.listingId,
-        // Зростання ціни падінням не рахуємо — на картці це підпис «↓».
+      .select({
+        listingId: priceHistory.listingId,
         drop: sql<number | null>`
-          case
-            when (${events.payload} ->> 'new_price')::int < (${events.payload} ->> 'old_price')::int
-            then (${events.payload} ->> 'old_price')::int - (${events.payload} ->> 'new_price')::int
-          end
+          nullif(
+            greatest(
+              (array_agg(${priceHistory.priceUsd} order by ${priceHistory.seenAt}))[1]
+                - (array_agg(${priceHistory.priceUsd} order by ${priceHistory.seenAt} desc))[1],
+              0
+            ),
+            0
+          )
         `.as('drop'),
+        dropDays: sql<number | null>`
+          date_part('day', now() - min(${priceHistory.seenAt}))::int
+        `.as('drop_days'),
       })
-      .from(events)
-      .where(eq(events.type, 'price_change'))
-      .orderBy(events.listingId, desc(events.createdAt)),
+      .from(priceHistory)
+      .groupBy(priceHistory.listingId),
   )
 
   return { stageOf, lastEvent, lastNote, priceDrop }
@@ -160,8 +172,12 @@ function subqueries() {
 
 export async function getListings(
   query: ListQuery,
-  /** Звузити до авто одного продавця — цим живе його сторінка. */
-  scope?: { sellerId?: string },
+  scope?: {
+    /** Звузити до авто одного продавця — цим живе його сторінка. */
+    sellerId?: string
+    /** Тільки прибрані з черги — секція архіву внизу черги. */
+    archivedOnly?: boolean
+  },
 ): Promise<ListPage> {
   const { stageOf, lastEvent, lastNote, priceDrop } = subqueries()
 
@@ -170,9 +186,12 @@ export async function getListings(
     commentAt: sql`${lastNote.createdAt}`,
   }
   const filters = listWhere(query, joins)
-  const where = scope?.sellerId
-    ? and(filters, eq(listings.sellerId, scope.sellerId))
-    : filters
+  const narrowed = [
+    filters,
+    scope?.sellerId ? eq(listings.sellerId, scope.sellerId) : undefined,
+    scope?.archivedOnly ? eq(listings.archived, true) : undefined,
+  ].filter((part) => part !== undefined)
+  const where = narrowed.length > 0 ? and(...narrowed) : undefined
   const { limit, offset } = listRange(query, MAX_PER_PAGE)
 
   const rowsQuery = db
@@ -183,6 +202,7 @@ export async function getListings(
       sellerId: sellers.id,
       sellerName: sellers.name,
       sellerType: sellers.type,
+      sellerPhones: sellers.phones,
       lastAuthor: lastEvent.author,
       lastType: lastEvent.type,
       lastText: lastEvent.text,
@@ -192,6 +212,7 @@ export async function getListings(
       noteText: lastNote.text,
       noteAt: lastNote.createdAt,
       drop: priceDrop.drop,
+      dropDays: priceDrop.dropDays,
     })
     .from(listings)
     .leftJoin(sellers, eq(sellers.id, listings.sellerId))
@@ -219,7 +240,12 @@ export async function getListings(
       listing: row.listing,
       stage: isStage(row.stage) ? row.stage : DEFAULT_STAGE,
       seller: row.sellerId
-        ? { id: row.sellerId, name: row.sellerName, type: row.sellerType ?? 'unknown' }
+        ? {
+            id: row.sellerId,
+            name: row.sellerName,
+            type: row.sellerType ?? 'unknown',
+            phones: row.sellerPhones ?? [],
+          }
         : null,
       lastEvent: row.lastAt
         ? { author: row.lastAuthor!, type: row.lastType!, text: row.lastText, createdAt: row.lastAt }
@@ -228,6 +254,7 @@ export async function getListings(
         ? { author: row.noteAuthor!, type: row.noteType!, text: row.noteText, createdAt: row.noteAt }
         : null,
       priceDrop: row.drop ?? null,
+      priceDropDays: row.dropDays ?? null,
     })),
     total: totals[0]?.total ?? 0,
   }

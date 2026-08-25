@@ -2,82 +2,78 @@
 
 import { useCallback, useState } from 'react'
 
+import { CardMenu } from './CardMenu'
 import { CallForm, CommentForm } from './EventForms'
+import { ContactDate } from './ListingFields'
 
 import { cn } from '@/lib/cn'
 
 /**
- * Підвал картки в черзі: дзвінок і коментар пишуться прямо звідси, не
- * відкриваючи авто. Заради цього черга й існує — пройтись списком і відзвітувати.
+ * Дії просто з черги: дзвінок і коментар пишуться, не відкриваючи авто. Заради
+ * цього черга й існує — пройтись списком і відзвітувати.
+ *
+ * Запис розкривається **інлайн**, без модалки: модалка на телефоні перекриває
+ * саме те авто, про яке пишеш.
  */
 
-type Panel = 'call' | 'comment'
+type Panel = 'call' | 'second'
 
 export function QuickActions({
   listingId,
-  contactText,
-  overdue,
+  overdue = false,
+  archived = false,
+  title,
+  phones = [],
 }: {
   listingId: string
-  contactText: string
-  overdue: boolean
+  /** Прострочене — головна дія стає червоною і зветься «Дзвінок зараз». */
+  overdue?: boolean
+  archived?: boolean
+  /** Назва авто — для підтвердження видалення під «···». */
+  title: string
+  /** Номери продавця — щоб дзвонити просто з черги. */
+  phones?: string[]
 }) {
   const [panel, setPanel] = useState<Panel | null>(null)
   const close = useCallback(() => setPanel(null), [])
   const toggle = (next: Panel) => setPanel((open) => (open === next ? null : next))
 
   return (
-    <footer className="border-t border-line">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <PanelButton label="Дзвінок" active={panel === 'call'} onClick={() => toggle('call')} />
-        <PanelButton
-          label="Коментар"
-          active={panel === 'comment'}
-          onClick={() => toggle('comment')}
-        />
-        <span
-          className={cn(
-            'ml-auto shrink-0 text-[12px]',
-            overdue ? 'font-semibold text-ink' : 'text-muted',
-          )}
+    <div className="mt-3">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => toggle('call')}
+          aria-expanded={panel === 'call'}
+          className={cn('btn tap flex-1', overdue ? 'btn-danger' : 'btn-accent')}
         >
-          {contactText}
-        </span>
+          {overdue ? 'Дзвінок зараз' : 'Дзвінок'}
+        </button>
+        {/* Друга кнопка залежить від стану: у простроченого мова не про
+            коментар, а про те, коли передзвонити (аркуш 04). */}
+        <button
+          type="button"
+          onClick={() => toggle('second')}
+          aria-expanded={panel === 'second'}
+          className={cn('btn tap btn-quiet flex-1', panel === 'second' && 'border-edge')}
+        >
+          {overdue ? 'Перенести' : 'Коментар'}
+        </button>
+
+        <CardMenu listingId={listingId} archived={archived} title={title} />
       </div>
 
       {panel ? (
-        <div className="border-t border-line px-3 py-2.5">
+        <div className="panel-in sunken mt-2 p-2.5">
           {panel === 'call' ? (
-            <CallForm listingId={listingId} onDone={close} compact />
+            <CallForm listingId={listingId} onDone={close} compact phones={phones} />
+          ) : overdue ? (
+            <ContactDate listingId={listingId} hasDate />
           ) : (
             <CommentForm listingId={listingId} onDone={close} compact />
           )}
         </div>
       ) : null}
-    </footer>
-  )
-}
-
-function PanelButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={active}
-      className={cn(
-        'h-8 rounded-card border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]',
-        active ? 'border-ink bg-ink text-white' : 'border-line text-ink',
-      )}
-    >
-      {label}
-    </button>
+    </div>
   )
 }

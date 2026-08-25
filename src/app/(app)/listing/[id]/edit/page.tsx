@@ -7,7 +7,7 @@ import { requireSession } from '@/lib/auth'
 import { kyivIsoDay } from '@/lib/dates'
 import { storage } from '@/lib/storage'
 
-export const metadata = { title: 'Редагування — Car Hunt' }
+export const metadata = { title: 'Редагування' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -46,17 +46,17 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
     <div className="mx-auto w-full max-w-[560px] space-y-4">
       <Link
         href={`/listing/${listing.id}`}
-        className="inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+        className="inline-block t-micro text-faint"
       >
         ← Картка
       </Link>
 
-      <h1 className="text-[19px] font-semibold leading-tight">
+      <h1 className="t-title">
         {listing.status === 'failed' ? 'Заповнити вручну' : 'Редагувати'}
       </h1>
 
       {listing.manualFields.length > 0 ? (
-        <p className="text-[12px] text-muted">
+        <p className="t-body text-faint">
           Виправлене руками парсер більше не чіпає — зняти позначку можна на картці.
         </p>
       ) : null}

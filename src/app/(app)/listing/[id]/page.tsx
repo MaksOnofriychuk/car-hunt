@@ -5,23 +5,23 @@ import { Description } from '@/components/Description'
 import { EventFeed } from '@/components/EventFeed'
 import { ListingActions } from '@/components/ListingActions'
 import { ManualFields } from '@/components/ManualFields'
+import { Odometer } from '@/components/Odometer'
 import { ArchiveToggle, ContactDate, TargetPrice } from '@/components/ListingFields'
 import { PhotoGallery } from '@/components/PhotoGallery'
-import { PlateStrip } from '@/components/PlateStrip'
+import { DaysBadge } from '@/components/DaysBadge'
 import { PriceChart } from '@/components/PriceChart'
 import { SellerPhones } from '@/components/SellerPhones'
 import { Specs } from '@/components/Specs'
-import { StageBadge } from '@/components/StageBadge'
 import { getListingDetail } from '@/db/queries'
 import { getSettings } from '@/db/settings'
 import { requireSession } from '@/lib/auth'
 import { cn } from '@/lib/cn'
-import { daysOnSale, formatDate } from '@/lib/dates'
-import { contactLabel, formatKm, formatNumber, formatUah, formatUsd } from '@/lib/format'
+import { daysOnSale, todayInKyiv } from '@/lib/dates'
+import { contactLabel, formatNumber, formatPrice, formatUah, formatUsd } from '@/lib/format'
 import { displayPhotos } from '@/lib/photos'
 import { sellerHint } from '@/lib/seller-hint'
 import { listingSpecs } from '@/lib/specs'
-import { todayInKyiv } from '@/lib/dates'
+import { STAGES, STAGE_LABELS, stageIndex } from '@/lib/stages'
 import { userNames } from '@/lib/users'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -38,7 +38,7 @@ export default async function ListingPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  /** `from` — фільтри списку, з якого сюди прийшли: щоб «← Черга» повертала туди ж. */
+  /** `from` — фільтри списку, з якого сюди прийшли: щоб «←» повертала туди ж. */
   searchParams: Promise<{ from?: string }>
 }) {
   const { id } = await params
@@ -58,81 +58,112 @@ export default async function ListingPage({
   const photos = displayPhotos(listing)
   const specs = listingSpecs(listing.snapshotRaw)
   const contact = contactLabel(listing.nextContactAt, todayInKyiv())
+  const days = daysOnSale(listing.publishedAt)
+
+  // «Віддає» — остання ціна, яку продавець назвав у розмові. Це не поле, а
+  // найсвіжіший дзвінок із проставленою сумою: торг живе в стрічці.
+  const offered = events.find((event) => event.payload?.offered_price)?.payload?.offered_price
+  // Скільки скинули від першого спостереження. Рахуємо по всій історії, а не
+  // від попереднього кроку: важливо, наскільки авто подешевшало взагалі.
+  const drop =
+    prices.length > 1 && listing.priceUsd ? prices[0].priceUsd - listing.priceUsd : null
 
   return (
-    <div className="mx-auto w-full max-w-[560px] space-y-4">
-      <Link
-        href={backHref}
-        className="inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
-      >
-        ← Черга
-      </Link>
+    <div className="mx-auto w-full max-w-[560px] space-y-3">
+      {/* Шапка: назад, назва, джерело і знак із днями на продажі. */}
+      <header className="surface flex items-center gap-2.5 p-2">
+        <Link
+          href={backHref}
+          aria-label="Назад до списку"
+          className="btn btn-quiet tap w-11 shrink-0 text-[16px]"
+        >
+          ←
+        </Link>
 
-      <PhotoGallery photos={photos} title={listing.title ?? 'Авто'} />
-
-      <section className="rounded-card border border-line bg-card p-3">
-        <h1 className="text-[19px] font-semibold leading-tight">
-          {listing.title ?? 'Без назви'}{' '}
-          {listing.year ? (
-            <span className="font-mono text-[16px] font-normal text-muted">{listing.year}</span>
-          ) : null}
-        </h1>
-        <p className="mt-1 text-[13px] text-muted">
-          <span className="font-mono tabular-nums">{formatKm(listing.mileageKm)}</span>
-          {listing.city ? ` · ${listing.city}` : null}
-          {listing.publishedAt ? ` · опубліковано ${formatDate(listing.publishedAt)}` : null}
-        </p>
-
-        <div className="mt-3 flex items-baseline gap-2">
-          <span
-            className={cn(
-              'font-mono text-[28px] font-semibold leading-none tabular-nums',
-              listing.status === 'removed' && 'text-muted line-through decoration-1',
-            )}
-          >
-            {settings.currency === 'uah' && listing.priceUah
-              ? formatUah(listing.priceUah)
-              : formatUsd(listing.priceUsd)}
-          </span>
-          {listing.priceUah && settings.currency !== 'uah' ? (
-            <span className="font-mono text-[13px] leading-none tabular-nums text-muted">
-              {formatUah(listing.priceUah)}
-            </span>
-          ) : null}
-          <StageBadge stage={stage} className="ml-auto" />
-        </div>
-
-        <PlateStrip
-          days={daysOnSale(listing.publishedAt)}
-          longStandingDays={settings.longStandingDays}
-          className="mt-3"
-        />
-
-        {listing.status === 'removed' ? (
-          <p className="mt-2 text-[12px] text-muted">
-            Оголошення зняте з AUTO.RIA. Дані лишаються тут назавжди.
-          </p>
-        ) : null}
-
-        <div className="mt-2 flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="t-title truncate">
+            {listing.title ?? 'Без назви'}{' '}
+            {listing.year ? <span className="t-num text-muted">{listing.year}</span> : null}
+          </h1>
           {listing.url ? (
             <a
               href={listing.url}
               target="_blank"
               rel="noreferrer"
-              className="min-w-0 flex-1 truncate font-mono text-[11px] text-plate underline underline-offset-2"
+              className="t-num block truncate text-[11px] text-faint hover:text-accent-lit"
             >
-              {listing.url}
+              {shortUrl(listing.url)} ↗
             </a>
           ) : (
-            <span className="min-w-0 flex-1 text-[11px] text-muted">Заведено руками</span>
+            <span className="t-micro block text-faint">Заведено руками</span>
           )}
-          <Link
-            href={`/listing/${listing.id}/edit`}
-            className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-plate"
+        </div>
+
+        <DaysBadge days={days} longStanding={settings.longStandingDays} />
+      </header>
+
+      <PhotoGallery photos={photos} title={listing.title ?? 'Авто'} />
+
+      {/* Головне число екрана і те, що з ним відбувається: наша ціль, скільки
+          просить продавець зараз і як ціна рухалась. */}
+      <section className="surface p-3">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <Odometer
+              value={formatPrice(listing.priceUsd, listing.priceUah, settings.currency)}
+              className={cn(
+                't-display block truncate',
+                listing.status === 'removed' && 'text-faint line-through decoration-1',
+              )}
+            />
+            {listing.priceUah && settings.currency !== 'uah' ? (
+              <p className="t-num mt-0.5 text-[12px] text-faint">{formatUah(listing.priceUah)}</p>
+            ) : null}
+            {drop && drop > 0 ? (
+              <p className="t-micro mt-1.5 inline-flex items-center gap-1 rounded-chip border border-ok px-1.5 py-0.5 text-ok">
+                ↓ {formatNumber(drop)} всього
+              </p>
+            ) : null}
+          </div>
+
+          <dl className="shrink-0 text-right">
+            {offered ? (
+              <div className="mb-2">
+                <dt className="t-micro text-faint">Віддає</dt>
+                <dd className="t-num text-[17px]">{formatUsd(offered)}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="t-micro text-faint">Ціль</dt>
+              <dd>
+                <TargetPrice listingId={listing.id} value={listing.targetPriceUsd} />
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        {prices.length > 1 ? <PriceChart points={prices} /> : null}
+
+        {listing.status === 'removed' ? (
+          <p className="t-body mt-3 text-muted">
+            Оголошення зняте з продажу. Дані лишаються тут назавжди.
+          </p>
+        ) : null}
+      </section>
+
+      {/* Смуга стану: де ми у воронці й коли наступний контакт. */}
+      <section className="surface px-3 py-2.5">
+        <StageProgress stage={stage} />
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="t-micro text-accent-lit">{STAGE_LABELS[stage]}</span>
+          <span
+            className={cn(
+              't-body ml-auto shrink-0',
+              contact.overdue ? 'font-semibold text-danger' : 'text-muted',
+            )}
           >
-            Редагувати
-          </Link>
+            {contact.text}
+          </span>
         </div>
       </section>
 
@@ -141,81 +172,54 @@ export default async function ListingPage({
       <Specs listing={listing} specs={specs} />
 
       {listing.descriptionText ? (
-        <section className="rounded-card border border-line bg-card p-3">
-          <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-            Опис від продавця
-          </h2>
+        <section className="surface p-3">
+          <h2 className="t-micro text-faint">Опис від продавця</h2>
           <div className="mt-2">
             <Description text={listing.descriptionText} />
           </div>
         </section>
       ) : null}
 
-      {/* Два поля, які редагуються в один тап — SPEC, «Інтерфейс». */}
-      <section className="rounded-card border border-line bg-card p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-            Цільова ціна
-          </span>
-          <TargetPrice listingId={listing.id} value={listing.targetPriceUsd} />
-        </div>
-
-        <div className="mt-3 border-t border-line pt-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-              Коли дзвонити
-            </span>
-            <span className={cn('text-[13px]', contact.overdue ? 'font-semibold' : 'text-muted')}>
-              {contact.text}
-            </span>
-          </div>
-          <div className="mt-2">
-            <ContactDate listingId={listing.id} hasDate={listing.nextContactAt !== null} />
-          </div>
-        </div>
-
-        <div className="mt-3 border-t border-line pt-3">
-          <ArchiveToggle listingId={listing.id} archived={listing.archived} />
-        </div>
-      </section>
-
-      {prices.length > 1 ? (
-        <section className="rounded-card border border-line bg-card p-3">
-          <PriceChart points={prices} />
-        </section>
-      ) : null}
-
       {/* Секція є завжди: номер вводиться руками, і без неї його нікуди вписати. */}
-      <section className="rounded-card border border-line bg-card p-3">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Продавець
-        </span>
-        {/* Клік по продавцю веде на його сторінку: там усі його авто і вся
-            історія розмов, а не тільки це оголошення. */}
-        <p className="mt-1 text-[15px] font-semibold">
+      <section className="surface p-3">
+        <h2 className="t-micro text-faint">Продавець</h2>
+
+        <div className="mt-2 flex items-center gap-2.5">
+          <span className="t-num sunken flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-[15px] text-muted">
+            {initialOf(seller?.name ?? hint.name)}
+          </span>
+
+          <div className="min-w-0 flex-1">
+            {/* Клік по продавцю веде на його сторінку: там усі його авто і вся
+                історія розмов, а не тільки це оголошення. */}
+            <p className="t-body truncate font-semibold">
+              {seller ? (
+                <Link href={`/sellers/${seller.id}`} className="hover:text-accent-lit">
+                  {seller.name ?? 'Без імені'}
+                </Link>
+              ) : (
+                (hint.name ?? 'Без імені')
+              )}
+            </p>
+            <p className="t-micro truncate text-faint">
+              {SELLER_TYPES[seller?.type ?? hint.type ?? 'unknown']}
+              {specs.sellerRating ? ` · ${specs.sellerRating} з 5` : null}
+              {specs.sellerOtherCars
+                ? ` · ${formatNumber(specs.sellerOtherCars)} оголошень`
+                : null}
+            </p>
+          </div>
+
           {seller ? (
-            <Link href={`/sellers/${seller.id}`} className="underline decoration-line underline-offset-4">
-              {seller.name ?? 'Без імені'}
+            <Link
+              href={`/sellers/${seller.id}`}
+              aria-label="Сторінка продавця"
+              className="btn btn-quiet tap w-11 shrink-0 text-[16px]"
+            >
+              →
             </Link>
-          ) : (
-            (hint.name ?? 'Без імені')
-          )}
-        </p>
-        <p className="text-[12px] text-muted">
-          {SELLER_TYPES[seller?.type ?? hint.type ?? 'unknown']}
-          {specs.sellerRating ? ` · рейтинг ${specs.sellerRating} з 5` : null}
-          {specs.sellerReviews ? ` · ${formatNumber(specs.sellerReviews)} відгуків` : null}
-        </p>
-        {specs.sellerOtherCars || specs.sellerSince ? (
-          <p className="text-[12px] text-muted">
-            {[
-              specs.sellerOtherCars ? `${formatNumber(specs.sellerOtherCars)} оголошень` : null,
-              specs.sellerSince,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        ) : null}
+          ) : null}
+        </div>
 
         <SellerPhones
           listingId={listing.id}
@@ -224,17 +228,99 @@ export default async function ListingPage({
           sharedWith={sameAs}
         />
 
-        {seller?.notes ? <p className="mt-2 text-[13px] leading-snug">{seller.notes}</p> : null}
+        {seller?.notes ? <p className="t-body mt-2 text-muted">{seller.notes}</p> : null}
       </section>
 
-      <section className="rounded-card border border-line bg-card p-3">
-        <ListingActions listingId={listing.id} stage={stage} />
+      {/* Робочі поля картки: коли дзвонити і чи тримати в черзі. */}
+      <section className="surface p-3">
+        <h2 className="t-micro text-faint">Коли дзвонити</h2>
+        <div className="mt-2">
+          <ContactDate listingId={listing.id} hasDate={listing.nextContactAt !== null} />
+        </div>
 
-        <h2 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Стрічка подій
-        </h2>
+        <div className="mt-3 flex items-center gap-2 border-t border-edge pt-3">
+          <ArchiveToggle listingId={listing.id} archived={listing.archived} />
+          <Link
+            href={`/listing/${listing.id}/edit`}
+            className="t-micro ml-auto shrink-0 text-accent-lit"
+          >
+            Редагувати
+          </Link>
+        </div>
+      </section>
+
+      <section className="surface p-3">
+        <h2 className="t-micro text-faint">{feedTitle(events)}</h2>
         <EventFeed events={events} viewer={author} names={names} />
       </section>
+
+      {/* Панель дій липне до низу екрана: записати дзвінок можна з будь-якого
+          місця картки, не гортаючи вниз. */}
+      <ListingActions listingId={listing.id} stage={stage} phones={seller?.phones ?? []} />
     </div>
   )
+}
+
+/** Воронка сімома рисками. «Відпало» — не крок уперед, тому окремим тоном. */
+function StageProgress({ stage }: { stage: (typeof STAGES)[number] }) {
+  const current = stageIndex(stage)
+  const lost = stage === 'lost'
+  const steps = STAGES.filter((value) => value !== 'lost')
+
+  return (
+    <div className="flex gap-1" aria-hidden>
+      {steps.map((value, index) => (
+        <span
+          key={value}
+          className={cn(
+            'h-[3px] flex-1 rounded-full transition-colors duration-(--t-base)',
+            lost
+              ? 'bg-edge'
+              : index <= current
+                ? stage === 'won'
+                  ? 'bg-ok'
+                  : 'bg-accent'
+                : 'bg-edge',
+          )}
+        />
+      ))}
+    </div>
+  )
+}
+
+function feedTitle(events: { type: string }[]) {
+  const calls = events.filter((event) => event.type === 'call').length
+  const comments = events.filter((event) => event.type === 'comment').length
+  const parts = [
+    calls > 0 ? `${calls} ${plural(calls, 'дзвінок', 'дзвінки', 'дзвінків')}` : null,
+    comments > 0 ? `${comments} ${plural(comments, 'коментар', 'коментарі', 'коментарів')}` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0 ? `Стрічка · ${parts.join(' · ')}` : 'Стрічка'
+}
+
+function plural(count: number, one: string, few: string, many: string) {
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
+  return many
+}
+
+/** Перша літера імені — плитка замість аватарки, якої в нас ніде немає. */
+function initialOf(name: string | null | undefined) {
+  const letter = name?.trim()[0]
+  return letter ? letter.toUpperCase() : '—'
+}
+
+/** Адреса без протоколу і без хвоста: у шапці важливо джерело, не рядок. */
+function shortUrl(url: string) {
+  try {
+    const { host, pathname } = new URL(url)
+    const clean = host.replace(/^www\./, '')
+    const tail = pathname.replace(/\/$/, '').split('/').pop()
+    return tail ? `${clean}/…/${tail.slice(0, 24)}` : clean
+  } catch {
+    return url
+  }
 }

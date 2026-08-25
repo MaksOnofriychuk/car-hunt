@@ -20,7 +20,7 @@ export function Description({ text }: { text: string }) {
     <div>
       <p
         className={cn(
-          'whitespace-pre-line text-[14px] leading-relaxed',
+          't-body whitespace-pre-line',
           long && !open && 'line-clamp-6',
         )}
       >
@@ -31,7 +31,7 @@ export function Description({ text }: { text: string }) {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-plate"
+          className="t-micro tap mt-2 text-accent-lit"
         >
           {open ? 'Згорнути' : 'Читати повністю'}
         </button>

@@ -6,7 +6,7 @@ import { contactLabel, formatKm, formatUsd } from '@/lib/format'
 import { parseListQuery } from '@/lib/list-query'
 import { STAGE_LABELS } from '@/lib/stages'
 
-export const metadata = { title: 'Друк списку — Car Hunt' }
+export const metadata = { title: 'Друк списку' }
 
 /**
  * Список для друку і для PDF. Окремою сторінкою, а не кнопкою на черзі: тут
@@ -31,8 +31,8 @@ export default async function PrintPage({
   return (
     <div className="mx-auto w-full max-w-[900px] space-y-4 print:max-w-none">
       <header className="flex items-baseline gap-3 print:mb-4">
-        <h1 className="text-[19px] font-semibold">Список авто</h1>
-        <span className="font-mono text-[13px] tabular-nums text-muted">
+        <h1 className="t-title">Список авто</h1>
+        <span className="t-num text-[13px] text-faint">
           {total} шт · {formatDate(new Date())}
         </span>
         <div className="ml-auto print:hidden">
@@ -40,48 +40,48 @@ export default async function PrintPage({
         </div>
       </header>
 
-      <table className="w-full border-collapse text-[12px]">
+      <table className="t-body w-full border-collapse">
         <thead>
-          <tr className="border-b border-ink text-left">
-            <th className="py-1 pr-2 font-semibold">Авто</th>
-            <th className="py-1 pr-2 font-semibold">Ціна</th>
-            <th className="py-1 pr-2 font-semibold">Ціль</th>
-            <th className="py-1 pr-2 font-semibold">Пробіг</th>
-            <th className="py-1 pr-2 font-semibold">Місто</th>
-            <th className="py-1 pr-2 font-semibold">Днів</th>
-            <th className="py-1 pr-2 font-semibold">Етап</th>
-            <th className="py-1 pr-2 font-semibold">Дзвонити</th>
-            <th className="py-1 font-semibold">Нотатки</th>
+          <tr className="border-b border-edge text-left">
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Авто</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Ціна</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Ціль</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Пробіг</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Місто</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Днів</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Етап</th>
+            <th className="t-micro py-1.5 pr-2 text-left text-faint">Дзвонити</th>
+            <th className="t-micro py-1.5 text-left text-faint">Нотатки</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(({ listing, stage }) => (
-            <tr key={listing.id} className="border-b border-line align-top">
+            <tr key={listing.id} className="border-b border-edge align-top">
               <td className="py-1.5 pr-2">
                 {listing.title ?? 'Без назви'}
                 {listing.year ? (
-                  <span className="ml-1 font-mono text-muted">{listing.year}</span>
+                  <span className="t-num ml-1 text-faint">{listing.year}</span>
                 ) : null}
               </td>
-              <td className="py-1.5 pr-2 font-mono tabular-nums">{formatUsd(listing.priceUsd)}</td>
-              <td className="py-1.5 pr-2 font-mono tabular-nums">
+              <td className="py-1.5 pr-2 t-num">{formatUsd(listing.priceUsd)}</td>
+              <td className="py-1.5 pr-2 t-num">
                 {formatUsd(listing.targetPriceUsd)}
               </td>
-              <td className="py-1.5 pr-2 font-mono tabular-nums">{formatKm(listing.mileageKm)}</td>
+              <td className="py-1.5 pr-2 t-num">{formatKm(listing.mileageKm)}</td>
               <td className="py-1.5 pr-2">{listing.city ?? '—'}</td>
-              <td className="py-1.5 pr-2 font-mono tabular-nums">
+              <td className="py-1.5 pr-2 t-num">
                 {daysOnSale(listing.publishedAt) ?? '—'}
               </td>
               <td className="py-1.5 pr-2">{STAGE_LABELS[stage]}</td>
               <td className="py-1.5 pr-2">{contactLabel(listing.nextContactAt, today).text}</td>
               {/* Порожня колонка навмисно: у роздруку є куди писати ручкою. */}
-              <td className="w-[22%] border-l border-line py-1.5" />
+              <td className="w-[22%] border-l border-edge py-1.5" />
             </tr>
           ))}
         </tbody>
       </table>
 
-      <p className="text-[11px] text-muted print:mt-4">
+      <p className="t-micro text-faint print:mt-4">
         Car Hunt · роздруковано {formatDate(new Date())}
       </p>
     </div>

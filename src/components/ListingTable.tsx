@@ -108,15 +108,20 @@ export function ListingTable({
     <div className="space-y-2">
       <ColumnSettings prefs={prefs} />
 
-      <div className="overflow-x-auto rounded-card border border-line bg-card">
-        <table className="w-full border-collapse text-[13px]">
+      {/* Рядок = картка: стан підсвічується лівим ребром і тоном, а не
+          окремими бейджами (аркуш 06). */}
+      <div className="surface overflow-x-auto">
+        <table className="t-body w-full border-collapse">
           <thead>
             {table.getHeaderGroups().map((group) => (
-              <tr key={group.id} className="border-b border-line">
+              <tr key={group.id} className="border-b border-edge">
                 {group.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-muted"
+                    className={cn(
+                      't-micro whitespace-nowrap px-2 py-2.5 text-faint',
+                      NUMERIC.has(header.column.id) ? 'text-right' : 'text-left',
+                    )}
                   >
                     {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                   </th>
@@ -130,13 +135,19 @@ export function ListingTable({
               <tr
                 key={row.id}
                 className={cn(
-                  'border-b border-line last:border-b-0',
-                  contactLabel(row.original.row.listing.nextContactAt, context.today).overdue &&
-                    'border-l-[3px] border-l-signal',
+                  'border-b border-edge transition-colors duration-(--t-instant) last:border-b-0 hover:bg-[color:color-mix(in_oklab,var(--color-ink)_4%,transparent)]',
+                  rowTone(row.original.row, context.today),
                 )}
               >
                 {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className={cn('px-2 align-middle', DENSITY_CLASSES[context.density].row)}>
+                  <td
+                    key={cell.id}
+                    className={cn(
+                      'px-2 align-middle',
+                      NUMERIC.has(cell.column.id) && 'text-right',
+                      DENSITY_CLASSES[context.density].row,
+                    )}
+                  >
                     <table.FlexRender cell={cell} />
                   </td>
                 ))}
@@ -147,6 +158,20 @@ export function ListingTable({
       </div>
     </div>
   )
+}
+
+/** Колонки з числами: у макеті вони вирівняні праворуч, розряд під розрядом. */
+const NUMERIC = new Set(['price', 'target', 'diff', 'days', 'mileage'])
+
+/** Стан рядка — лівим ребром і тоном, як стан картки в списку. */
+function rowTone(row: ListingRow, today: string): string {
+  if (row.stage === 'won') return 'border-l-[3px] border-l-ok bg-ok/6'
+  if (row.stage === 'lost' || row.listing.status === 'removed') return 'text-faint opacity-60'
+  if (row.listing.status === 'failed') return 'border-l-[3px] border-l-warn'
+  if (contactLabel(row.listing.nextContactAt, today).overdue) {
+    return 'border-l-[3px] border-l-danger bg-danger/6'
+  }
+  return 'border-l-[3px] border-l-transparent'
 }
 
 /* -------------------------------- колонки ---------------------------------- */
@@ -164,7 +189,10 @@ function buildColumns(context: Context) {
 
       const active = query.sort?.field === field
       return (
-        <Link href={listHref(toggleSort(query, field))} className={cn(active && 'text-ink')}>
+        <Link
+          href={listHref(toggleSort(query, field))}
+          className={cn(active ? 'text-accent-lit' : 'hover:text-ink')}
+        >
           {label}
           {active ? (query.sort?.dir === 'asc' ? ' ↑' : ' ↓') : null}
         </Link>
@@ -188,10 +216,10 @@ function buildColumns(context: Context) {
             alt=""
             width={48}
             height={36}
-            className="h-9 w-12 rounded-card object-cover"
+            className="h-9 w-12 rounded-chip object-cover"
           />
         ) : (
-          <span className="flex h-9 w-12 items-center justify-center rounded-card bg-concrete font-mono text-[10px] uppercase text-muted">
+          <span className="t-micro sunken flex h-9 w-12 items-center justify-center text-faint">
             {(row.original.row.listing.brand ?? '?').slice(0, 3)}
           </span>
         ),
@@ -206,7 +234,7 @@ function buildColumns(context: Context) {
           <Link href={href(listing.id)} className="block min-w-[180px] max-w-[280px] truncate">
             {listing.title ?? 'Без назви'}
             {listing.year ? (
-              <span className="ml-1 font-mono text-[12px] text-muted">{listing.year}</span>
+              <span className="t-num ml-1 text-[12px] text-faint">{listing.year}</span>
             ) : null}
           </Link>
         )
@@ -219,9 +247,9 @@ function buildColumns(context: Context) {
       cell: ({ row }) => {
         const { listing, priceDrop } = row.original.row
         return (
-          <span className="whitespace-nowrap font-mono tabular-nums">
+          <span className="whitespace-nowrap t-num">
             {formatPrice(listing.priceUsd, listing.priceUah, currency)}
-            {priceDrop ? <span className="ml-1 text-plate">↓{formatUsd(priceDrop)}</span> : null}
+            {priceDrop ? <span className="ml-1 text-ok">↓{formatUsd(priceDrop)}</span> : null}
           </span>
         )
       },
@@ -231,7 +259,7 @@ function buildColumns(context: Context) {
       id: 'target',
       header: head('target'),
       cell: ({ row }) => (
-        <span className="font-mono tabular-nums text-muted">
+        <span className="t-num text-muted">
           {formatUsd(row.original.row.listing.targetPriceUsd)}
         </span>
       ),
@@ -247,7 +275,7 @@ function buildColumns(context: Context) {
         }
         const diff = priceUsd - targetPriceUsd
         return (
-          <span className={cn('font-mono tabular-nums', diff <= 0 && 'font-semibold text-plate')}>
+          <span className={cn('t-num', diff <= 0 && 'font-semibold text-accent-lit')}>
             {diff > 0 ? '+' : ''}
             {formatUsd(diff)}
           </span>
@@ -263,8 +291,8 @@ function buildColumns(context: Context) {
         return (
           <span
             className={cn(
-              'font-mono tabular-nums',
-              days !== null && days > longStandingDays && 'text-plate',
+              't-num',
+              days !== null && days > longStandingDays && 'text-accent-lit',
             )}
           >
             {days ?? '—'}
@@ -277,7 +305,7 @@ function buildColumns(context: Context) {
       id: 'mileage',
       header: head('mileage'),
       cell: ({ row }) => (
-        <span className="whitespace-nowrap font-mono tabular-nums">
+        <span className="whitespace-nowrap t-num">
           {formatKm(row.original.row.listing.mileageKm)}
         </span>
       ),
@@ -326,7 +354,7 @@ function buildColumns(context: Context) {
       id: 'source',
       header: head('source'),
       cell: ({ row }) => (
-        <span className="text-[12px] text-muted">
+        <span className="t-micro text-faint">
           {SOURCE_LABELS[row.original.row.listing.source]}
         </span>
       ),
@@ -374,13 +402,13 @@ function ColumnSettings({ prefs }: { prefs: ViewPrefs }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="h-8 rounded-card border border-line px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+        className="chip tap"
       >
         Колонки · {visibleColumns(draft).length}
       </button>
 
       {open ? (
-        <div className="rounded-card border border-line bg-card p-2">
+        <div className="surface p-2">
           <ul className="flex flex-wrap gap-1.5">
             {draft.order.map((id) => {
               const shown = !draft.hidden.includes(id)
@@ -396,10 +424,7 @@ function ColumnSettings({ prefs }: { prefs: ViewPrefs }) {
                           : draft.hidden.filter((item) => item !== id),
                       })
                     }
-                    className={cn(
-                      'h-7 rounded-card border px-2 text-[12px]',
-                      shown ? 'border-ink' : 'border-line text-muted line-through',
-                    )}
+                    className={cn('chip', shown ? 'chip-on' : 'line-through')}
                   >
                     {COLUMN_LABELS[id]}
                   </button>
@@ -407,7 +432,7 @@ function ColumnSettings({ prefs }: { prefs: ViewPrefs }) {
                     type="button"
                     onClick={() => move(id, -1)}
                     aria-label={`${COLUMN_LABELS[id]} лівіше`}
-                    className="px-0.5 text-[11px] text-muted"
+                    className="tap px-1 text-faint hover:text-ink"
                   >
                     ←
                   </button>
@@ -415,7 +440,7 @@ function ColumnSettings({ prefs }: { prefs: ViewPrefs }) {
                     type="button"
                     onClick={() => move(id, 1)}
                     aria-label={`${COLUMN_LABELS[id]} правіше`}
-                    className="px-0.5 text-[11px] text-muted"
+                    className="tap px-1 text-faint hover:text-ink"
                   >
                     →
                   </button>

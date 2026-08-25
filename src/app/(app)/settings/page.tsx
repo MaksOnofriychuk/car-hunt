@@ -9,7 +9,7 @@ import { requireSession } from '@/lib/auth'
 import { LOOK_COOKIE, parseLook } from '@/lib/look'
 import { storage } from '@/lib/storage'
 
-export const metadata = { title: 'Налаштування — Car Hunt' }
+export const metadata = { title: 'Налаштування' }
 
 /**
  * Налаштування. Окрема сторінка, а не спливне вікно: на телефоні модалка з
@@ -30,8 +30,8 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-[560px] space-y-4">
       <div className="flex items-baseline gap-2">
-        <h1 className="text-[19px] font-semibold leading-tight">Налаштування</h1>
-        <span className="text-[12px] text-muted">{name}</span>
+        <h1 className="t-title">Налаштування</h1>
+        <span className="t-micro text-faint">{name}</span>
       </div>
 
       <LookSettings look={parseLook(jar.get(LOOK_COOKIE)?.value)} />

@@ -1,71 +1,186 @@
 @import 'tailwindcss';
 
-/* Палітра і шрифти — розділ «Візуальний напрямок» у SPEC.md.
-   Орієнтир: український номерний знак і приладова панель. */
+/* ==========================================================================
+   Візуальна система «Світні краї» (design/, напрямок 1c).
+   Темна тема основна, світла — повноцінна пара до неї, а не інверсія.
+   Глибина робиться градієнтом, світною волосінню і сяйвом у куті —
+   drop-shadow не використовується ніде.
+   ========================================================================== */
+
 @theme {
-  --color-concrete: #eeefec; /* фон, холодний бетонний сірий */
-  --color-card: #ffffff; /* поверхня картки */
-  --color-ink: #16181a; /* текст */
-  --color-plate: #0057b8; /* акцент, синій з номерного знака */
-  --color-signal: #ffd200; /* сигнальний — ЛИШЕ для «прострочено» */
-  --color-line: #d8dad5; /* рамки карток */
-  --color-muted: #6b7075; /* другорядний текст */
+  /* --- поверхні: значення темної теми, світла перевизначає нижче --- */
+  --color-base: #06070a; /* тло сторінки */
+  --color-raised: #10131a; /* суцільний відповідник градієнта поверхні */
+  --color-sunken: #0b0d12; /* поля вводу, вкладені блоки */
+  --color-edge: rgba(255, 255, 255, 0.07); /* волосінь-рамка */
+
+  /* --- текст: три рівні, AAA / AAA / AA --- */
+  --color-ink: #f2f5f8;
+  --color-muted: #9ba4b0;
+  --color-faint: #6c7686;
+
+  /* --- сенс --- */
+  --color-accent: #0f6bd8; /* заливка кнопок і смуга знака */
+  --color-accent-lit: #5aa2ff; /* акцент як ТЕКСТ на темному: #0F6BD8 тут не читається */
+  --color-ok: #35d07f; /* падіння ціни, куплено */
+  --color-danger: #ff5a5a; /* прострочено */
+  --color-warn: #ffc46b; /* не розпізналось, увага */
+  --color-plate-face: #edf1f5; /* поле номерного знака */
+  --color-plate-band: #0057b8; /* канонічний синій знака, однаковий в обох темах */
+  --color-plate-ink: #10151d; /* напис на знаку — темний в обох темах */
 
   --font-sans: var(--font-sans-ui), 'Helvetica Neue', Arial, sans-serif;
   --font-mono: var(--font-mono-ui), ui-monospace, Menlo, monospace;
 
-  --radius-card: 4px;
+  --radius-card: 12px;
+  --radius-control: 10px;
+  --radius-chip: 8px;
+  --radius-plate: 6px;
 }
 
-/* Темна тема — не інверсія світлої, а власна пара до неї.
-   Фон — холодний графіт, а не чорний: чорне тло з тонкими рамками мерехтить.
-   Синій акцент той самий за відтінком, лише піднятий по світлоті, інакше
-   #0057B8 на графіті просто не читається. Сигнальний жовтий не чіпаємо — він
-   мусить лишатись сигнальним. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --color-concrete: #15181c;
-    --color-card: #1d2126;
-    --color-ink: #e7e9e6;
-    --color-plate: #4f95e8;
-    --color-line: #2f343b;
-    --color-muted: #98a0a8;
-    color-scheme: dark;
+/* --------------------------------------------------------------------------
+   Світла пара. Тем рівно дві, і вибір завжди явний: `data-theme` ставить
+   сервер із cookie, тому системна перевага тут ні на що не впливає.
+   -------------------------------------------------------------------------- */
+:root[data-theme='light'] {
+  --color-base: #edf0f4;
+  --color-raised: #ffffff;
+  --color-sunken: #f5f7fa;
+  --color-edge: rgba(13, 20, 33, 0.12);
+  --color-ink: #10151d;
+  --color-muted: #47536a;
+  --color-faint: #6b7890;
+  --color-accent: #0b5ac2;
+  --color-accent-lit: #0b5ac2;
+  --color-ok: #0e7c4a;
+  --color-danger: #c22f2f;
+  --color-warn: #8a5e0b;
+  --color-plate-face: #ffffff;
+  color-scheme: light;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* --- глибина --- */
+  --surface-top: #151922; /* верх градієнта поверхні */
+  --surface-bottom: #0b0d12; /* низ */
+
+  /* Тонування поверхні станом. Не фарба поверх картки, а власний градієнт:
+     інакше світна волосінь і сяйво лягали б поверх чужого кольору. */
+  --tint-danger-top: #241416;
+  --tint-danger-bottom: #180d10;
+  --tint-ok-top: #0f2119;
+  --tint-ok-bottom: #0b1712;
+  --tint-warn-top: #241d10;
+  --tint-warn-bottom: #17120a;
+  /* Підкладка перегляду фото. Темна в обох темах: знімок дивляться на чорному,
+     а не на молочному — інакше око зводить контраст самого фото. */
+  --overlay: rgba(4, 5, 8, 0.94);
+  --edge-lit: rgba(140, 190, 255, 0.85); /* світна волосінь по верхньому краю */
+  --glow: rgba(140, 190, 255, 0.14); /* радіальне сяйво в куті, 12–16% */
+
+  /* --- типографіка: рівень M, решта нижче --- */
+  --fs-display: 42px;
+  --lh-display: 44px;
+  --fs-title: 19px;
+  --lh-title: 22px;
+  --fs-body: 13px;
+  --lh-body: 19.5px;
+  --fs-micro: 10px;
+  --lh-micro: 12px;
+  /* мінімальна ціль під палець */
+  --tap: 44px;
+
+  /* --- рух --- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-odometer: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-instant: 120ms;
+  --t-fast: 200ms;
+  --t-base: 320ms;
+  --t-odometer: 560ms;
+  --t-skeleton: 320ms;
+  --t-pulse: 2800ms;
+}
+
+:root[data-theme='light'],
+:root:not([data-theme='dark']) {
+  --surface-top: #ffffff;
+  --surface-bottom: #ffffff;
+  --tint-danger-top: #fdeeee;
+  --tint-danger-bottom: #fdeeee;
+  --tint-ok-top: #eaf6f0;
+  --tint-ok-bottom: #eaf6f0;
+  --tint-warn-top: #fbf3e4;
+  --tint-warn-bottom: #fbf3e4;
+}
+
+/* Світлій темі світіння не потрібне: там глибину дають рамка й тон. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --edge-lit: transparent;
+    --glow: transparent;
   }
 }
 
+:root[data-theme='light'] {
+  --edge-lit: transparent;
+  --glow: transparent;
+}
+
 :root[data-theme='dark'] {
-  --color-concrete: #15181c;
-  --color-card: #1d2126;
-  --color-ink: #e7e9e6;
-  --color-plate: #4f95e8;
-  --color-line: #2f343b;
-  --color-muted: #98a0a8;
-  color-scheme: dark;
+  --surface-top: #151922;
+  --surface-bottom: #0b0d12;
+  --edge-lit: rgba(140, 190, 255, 0.85);
+  --glow: rgba(140, 190, 255, 0.14);
 }
 
-/* Обраний шрифт інтерфейсу. Змінна одна, а який саме шрифт у ній — вирішує
-   атрибут на <html>, який ставить сервер із cookie. */
-:root { --font-sans-ui: var(--font-plex); }
+/* --------------------------------------------------------------------------
+   Чотири рівні розміру. Міняються самі ролі, а не масштаб усього: підпис
+   мусить лишатись компактним, навіть коли ціна виростає.
+   -------------------------------------------------------------------------- */
+:root[data-size='s'] {
+  --fs-display: 36px;
+  --lh-display: 38px;
+  --fs-title: 17px;
+  --lh-title: 20px;
+  --fs-body: 12px;
+  --lh-body: 18px;
+}
+
+:root[data-size='l'] {
+  --fs-display: 48px;
+  --lh-display: 50px;
+  --fs-title: 22px;
+  --lh-title: 26px;
+  --fs-body: 15px;
+  --lh-body: 22px;
+  --fs-micro: 11px;
+  --lh-micro: 13px;
+  --tap: 48px;
+}
+
+:root[data-size='xl'] {
+  --fs-display: 56px;
+  --lh-display: 58px;
+  --fs-title: 25px;
+  --lh-title: 29px;
+  --fs-body: 17px;
+  --lh-body: 25px;
+  --fs-micro: 12px;
+  --lh-micro: 14px;
+  --tap: 52px;
+}
+
+/* Який саме шрифт стоїть у --font-sans-ui, вирішує атрибут на <html>: його
+   ставить сервер із cookie, тому мигання нема. */
+:root {
+  --font-sans-ui: var(--font-inter);
+}
+:root[data-font='plex'] { --font-sans-ui: var(--font-plex); }
 :root[data-font='fira'] { --font-sans-ui: var(--font-fira); }
-:root[data-font='inter'] { --font-sans-ui: var(--font-inter); }
 :root[data-font='rubik'] { --font-sans-ui: var(--font-rubik); }
-
-/* Розмір інтерфейсу. `zoom` замість гри зі шрифтом навмисно: він масштабує
-   все — відступи, висоти кнопок, мініатюри, — а не тільки літери, як просив
-   SPEC налаштувань. Висоту екрана ділимо назад на множник, інакше сторінка
-   завжди мала б зайвий скрол. */
-:root[data-size='s'] { --ui-zoom: 0.92; }
-:root[data-size='l'] { --ui-zoom: 1.14; }
-:root[data-size='xl'] { --ui-zoom: 1.3; }
-
-body {
-  zoom: var(--ui-zoom, 1);
-}
-
-.app-shell {
-  min-height: calc(100dvh / var(--ui-zoom, 1));
-}
 
 @layer base {
   html {
@@ -73,29 +188,394 @@ body {
   }
 
   body {
-    background-color: var(--color-concrete);
+    background-color: var(--color-base);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Без тіней і без зайвих анімацій — SPEC. Лишається тільки поява картки. */
+  /* Фокус видно завжди: кільце плюс ореол того ж кольору. */
   *:focus-visible {
-    outline: 2px solid var(--color-plate);
+    outline: 2px solid var(--color-accent-lit);
     outline-offset: 2px;
   }
 
   ::selection {
-    background-color: var(--color-plate);
+    background-color: var(--color-accent);
     color: #fff;
   }
 }
 
-/* Єдина анімація в застосунку: плавна поява картки після парсингу. */
+@layer components {
+  /* --- типографічні ролі --- */
+  .t-display {
+    font-family: var(--font-mono);
+    font-size: var(--fs-display);
+    line-height: var(--lh-display);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .t-title {
+    font-family: var(--font-sans);
+    font-size: var(--fs-title);
+    line-height: var(--lh-title);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .t-body {
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    font-weight: 400;
+  }
+
+  .t-micro {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    line-height: var(--lh-micro);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* Будь-яке число в інтерфейсі — моноширинне і в стовпчик. */
+  .t-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Ціль під палець: 44px мінімум, більша на великих розмірах. */
+  .tap {
+    min-height: var(--tap);
+  }
+
+  /* --- глибина: три прийоми, завжди разом --- */
+  .surface {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-card);
+    background-image: linear-gradient(180deg, var(--surface-top), var(--surface-bottom));
+  }
+
+  /* 1 — світна волосінь по верхньому краю */
+  .surface::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, var(--edge-lit), transparent);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  /* 2 — радіальне сяйво в куті */
+  .surface::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(120% 90% at 10% -20%, var(--glow), transparent 62%);
+    pointer-events: none;
+  }
+
+  /* Оболонка застосунку: висота екрана без залежності від масштабу. */
+  .app-shell {
+    min-height: 100dvh;
+  }
+
+  /* Ребро стану: 3px зліва, колір задає стан картки. */
+  .rib {
+    border-left-width: 3px;
+    border-left-style: solid;
+  }
+
+  /* --- поверхня, тонована станом --- */
+  .surface-danger {
+    --surface-top: var(--tint-danger-top);
+    --surface-bottom: var(--tint-danger-bottom);
+    border-color: color-mix(in oklab, var(--color-danger) 45%, transparent);
+  }
+
+  .surface-ok {
+    --surface-top: var(--tint-ok-top);
+    --surface-bottom: var(--tint-ok-bottom);
+    border-color: color-mix(in oklab, var(--color-ok) 40%, transparent);
+  }
+
+  .surface-warn {
+    --surface-top: var(--tint-warn-top);
+    --surface-bottom: var(--tint-warn-bottom);
+    border-color: color-mix(in oklab, var(--color-warn) 40%, transparent);
+  }
+
+  /* Вкладена поверхня: цитата, поле вводу, скелетон. Глибини не має. */
+  .sunken {
+    background-color: var(--color-sunken);
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-chip);
+  }
+
+  /* --- кнопки --- */
+  /* Чипа падіння ціни: заливка кольором «ок», текст — тлом сторінки.
+     Так вона світиться на картці, а не губиться рамкою серед решти. */
+  .chip-ok {
+    background-color: var(--color-ok);
+    color: var(--color-base);
+    font-weight: 600;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--tap);
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--color-edge);
+    font-size: var(--fs-body);
+    font-weight: 600;
+    transition:
+      background-color var(--t-instant) var(--ease-out),
+      border-color var(--t-instant) var(--ease-out),
+      transform var(--t-instant) var(--ease-out);
+  }
+
+  .btn:active {
+    transform: scale(0.995);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+  }
+
+  /* Головна дія: градієнт плюс світна волосінь по верхньому краю. */
+  .btn-accent {
+    position: relative;
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-accent) 70%, transparent);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-accent) 88%, white),
+      var(--color-accent)
+    );
+  }
+
+  .btn-accent::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, var(--edge-lit), transparent);
+    opacity: 0.7;
+  }
+
+  .btn-danger {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-danger) 60%, transparent);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-danger) 70%, black 8%),
+      color-mix(in oklab, var(--color-danger) 55%, black 22%)
+    );
+  }
+
+  .btn-quiet {
+    color: var(--color-ink);
+    background-color: transparent;
+  }
+
+  .btn-quiet:hover {
+    background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  }
+
+  /* --- поля вводу --- */
+  /*
+   * Одне правило на всі поля: текст, число, дата, вибір і багаторядкове.
+   * Дата окремо перефарбовує свій календарний значок — у темній темі він
+   * інакше лишається чорним квадратиком із світлої теми браузера.
+   */
+  .field {
+    display: block;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-control);
+    background-color: var(--color-sunken);
+    color: var(--color-ink);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    transition:
+      border-color var(--t-instant) var(--ease-out),
+      background-color var(--t-instant) var(--ease-out);
+  }
+
+  .field::placeholder {
+    color: var(--color-faint);
+  }
+
+  .field:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-ink) 18%, var(--color-edge));
+  }
+
+  .field:focus,
+  .field:focus-visible {
+    outline: 2px solid var(--color-accent-lit);
+    outline-offset: 1px;
+    border-color: transparent;
+  }
+
+  .field:disabled {
+    opacity: 0.5;
+  }
+
+  /* Числа в полях — моноширинні й праворуч, як усюди в системі. */
+  .field-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  input[type='date'].field,
+  input[type='datetime-local'].field,
+  input[type='time'].field {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Значок календаря в темній темі — світлий, інакше його майже не видно. */
+  :root[data-theme='dark'] input[type='date'].field::-webkit-calendar-picker-indicator,
+  :root[data-theme='dark'] input[type='datetime-local'].field::-webkit-calendar-picker-indicator,
+  :root[data-theme='dark'] input[type='time'].field::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(0.9);
+    opacity: 0.7;
+    cursor: pointer;
+  }
+
+  select.field {
+    appearance: none;
+    padding-right: 2rem;
+    /* Стрілка малюється тлом: власний елемент тут був би зайвим вузлом. */
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+      right 1.05rem center,
+      right 0.75rem center;
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+  }
+
+  textarea.field {
+    min-height: calc(var(--tap) * 1.6);
+    line-height: var(--lh-body);
+    resize: vertical;
+  }
+
+  /* Чипа-перемикач: фільтри, пресети, результати дзвінка, вибір етапу. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 36px;
+    padding-inline: 0.625rem;
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-chip);
+    background-color: transparent;
+    color: var(--color-muted);
+    font-size: var(--fs-body);
+    transition:
+      border-color var(--t-instant) var(--ease-out),
+      color var(--t-instant) var(--ease-out),
+      background-color var(--t-instant) var(--ease-out);
+  }
+
+  .chip:hover:not(:disabled) {
+    color: var(--color-ink);
+    background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  }
+
+  /* Обрана чипа — акцентною рамкою і текстом, без заливки: заливка тут
+     сперечалася б із головною кнопкою екрана. */
+  .chip-on {
+    color: var(--color-accent-lit);
+    border-color: color-mix(in oklab, var(--color-accent) 70%, transparent);
+    background-color: color-mix(in oklab, var(--color-accent) 12%, transparent);
+  }
+
+  .chip:disabled {
+    opacity: 0.5;
+  }
+
+  /* Дрібніша чипа для налаштувань: там вибору багато, і він не мусить рости
+     разом із розміром інтерфейсу — інакше на рівні XL сторінка стає списком
+     кнопок у пів екрана заввишки. */
+  .chip-sm {
+    min-height: 34px;
+    padding-inline: 0.5rem;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  /* --- скелетон, поки картка парситься --- */
+  .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-sunken),
+      color-mix(in oklab, var(--color-ink) 8%, var(--color-sunken)),
+      var(--color-sunken)
+    );
+    background-size: 200% 100%;
+    border-radius: var(--radius-chip);
+    animation: skeleton 1400ms var(--ease-out) infinite;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Рух. Тривалості й криві — з аркуша 03.
+   -------------------------------------------------------------------------- */
+
+/*
+ * Перемикання теми — 320 мс на самих поверхнях. Кнопки й чипи сюди не входять:
+ * у них власний перехід на 120 мс для наведення, і два переходи на одній
+ * властивості сперечалися б.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  .surface,
+  .sunken,
+  .field {
+    transition:
+      background-color var(--t-base) var(--ease-inout),
+      border-color var(--t-base) var(--ease-inout),
+      color var(--t-base) var(--ease-inout);
+  }
+}
+@keyframes skeleton {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -104,30 +584,136 @@ body {
 }
 
 .card-in {
-  animation: card-in 160ms ease-out both;
+  animation: card-in var(--t-base) var(--ease-out) both;
+}
+
+/* Розкриття запису дзвінка й підтверджень: inline, без модалки. */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.panel-in {
+  animation: panel-in var(--t-fast) var(--ease-out) both;
+}
+
+/*
+ * Прострочене пульсує краєм, а не текстом: миготіння прозорості на тексті
+ * робить його нечитабельним саме тоді, коли його треба прочитати (аркуш 03).
+ */
+@keyframes edge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-danger) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-danger) 16%, transparent);
+  }
+}
+
+.pulse-danger {
+  animation: edge-pulse var(--t-pulse) var(--ease-inout) infinite;
+}
+
+/*
+ * Одометр ціни: старий розряд викручується вгору, новий заходить знизу.
+ * Стагер задає компонент — тут лише сам рух.
+ */
+@keyframes digit-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes digit-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.6em);
+  }
+}
+
+.digit {
+  display: inline-block;
+}
+
+.digit-in {
+  animation: digit-in var(--t-odometer) var(--ease-odometer) both;
+}
+
+.digit-out {
+  animation: digit-out var(--t-odometer) var(--ease-odometer) both;
+}
+
+/* 900 мс кольору напрямку — далі число вирівнюється до основного тексту. */
+.odometer-down {
+  color: var(--color-ok);
+  transition: color 900ms var(--ease-out) 900ms;
+}
+
+.odometer-up {
+  color: var(--color-warn);
+  transition: color 900ms var(--ease-out) 900ms;
+}
+
+.odometer-settled {
+  color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-in {
+  :root {
+    --t-instant: 0ms;
+    --t-fast: 0ms;
+    --t-base: 0ms;
+    --t-odometer: 0ms;
+    --t-skeleton: 0ms;
+  }
+
+  .card-in,
+  .panel-in,
+  .skeleton,
+  .digit-in,
+  .digit-out {
     animation: none;
+  }
+
+  /* Пульс перетворюється на статичну обводку: рух прибрано, сигнал лишився. */
+  .pulse-danger {
+    animation: none;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-danger) 30%, transparent);
   }
 }
 
-/* Друк і збереження в PDF. Браузер друкує те саме дерево, тому прибираємо
-   зайве й повертаємо чорне по білому: кольорові плашки на папері не читаються,
-   а тонер коштує грошей. */
+/* --------------------------------------------------------------------------
+   Друк і збереження в PDF: чорне по білому, без глибини і кольорових плашок.
+   -------------------------------------------------------------------------- */
 @media print {
-  html {
-    --color-concrete: #ffffff;
-    --color-card: #ffffff;
+  :root {
+    --color-base: #ffffff;
+    --color-raised: #ffffff;
+    --color-sunken: #ffffff;
     --color-ink: #000000;
-    --color-line: #999999;
+    --color-edge: #999999;
     --color-muted: #444444;
-    --ui-zoom: 1;
-  }
-
-  body {
-    zoom: 1;
+    --color-faint: #666666;
+    --surface-top: #ffffff;
+    --surface-bottom: #ffffff;
+    --edge-lit: transparent;
+    --glow: transparent;
   }
 
   header.sticky,

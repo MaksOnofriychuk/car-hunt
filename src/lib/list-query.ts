@@ -30,6 +30,27 @@ export const SORT_FIELDS = [
 ] as const
 
 export type SortField = (typeof SORT_FIELDS)[number]
+
+/** Підписи полів сортування — однакові в панелі фільтрів і в заголовках таблиці. */
+export const SORT_LABELS: Record<SortField, string> = {
+  contact: 'Контакт',
+  title: 'Назва',
+  price: 'Ціна',
+  target: 'Ціль',
+  diff: 'Різниця',
+  days: 'Днів',
+  mileage: 'Пробіг',
+  year: 'Рік',
+  city: 'Місто',
+  stage: 'Етап',
+  seller: 'Продавець',
+  source: 'Джерело',
+  comment: 'Коментар',
+  added: 'Додано',
+}
+
+/** Ті шість, за якими сортують із телефона. Решта живе в заголовках таблиці. */
+export const QUICK_SORTS: SortField[] = ['price', 'days', 'mileage', 'year', 'added', 'contact']
 export type SortDir = 'asc' | 'desc'
 export type Sort = { field: SortField; dir: SortDir }
 
@@ -62,6 +83,9 @@ export type ListQuery = {
 }
 
 export const PER_PAGE = 50
+
+/** Скільки авто на сторінці можна обрати. Все інше в URL зводиться до типового. */
+export const PER_OPTIONS = [20, 50, 100] as const
 
 /** Стеля для «показати всі»: випадковий клік не має класти сторінку. */
 export const MAX_PER_PAGE = 500
@@ -148,7 +172,12 @@ export function parseListQuery(params: Params): ListQuery {
     archived: read(params, 'archived') === '1',
     sort: parseSort(read(params, 'sort')),
     page: page && page > 0 ? page : 1,
-    per: per === 'all' ? 'all' : PER_PAGE,
+    per:
+      per === 'all'
+        ? 'all'
+        : (PER_OPTIONS as readonly number[]).includes(Number(per))
+          ? Number(per)
+          : PER_PAGE,
   }
 }
 
@@ -182,6 +211,7 @@ export function serializeListQuery(query: ListQuery): string {
   if (query.sort) params.set('sort', `${query.sort.field}:${query.sort.dir}`)
   if (query.page > 1) params.set('page', String(query.page))
   if (query.per === 'all') params.set('per', 'all')
+  else if (query.per !== PER_PAGE) params.set('per', String(query.per))
 
   return params.toString()
 }

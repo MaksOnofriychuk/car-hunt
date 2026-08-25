@@ -31,7 +31,7 @@ export function PhotoGallery({ photos, title }: Props) {
         type="button"
         onClick={() => setOpenAt(0)}
         aria-label="Відкрити фото на весь екран"
-        className="relative block aspect-[4/3] w-full overflow-hidden rounded-card border border-line bg-concrete"
+        className="relative block aspect-[4/3] w-full overflow-hidden rounded-card border border-edge bg-sunken"
       >
         <Image
           src={photos[0]}
@@ -41,24 +41,37 @@ export function PhotoGallery({ photos, title }: Props) {
           className="object-cover"
           priority
         />
-        <span className="absolute bottom-2 right-2 rounded-card bg-ink/80 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-white">
-          {photos.length}
+        <span className="t-num absolute bottom-2 right-2 rounded-chip bg-[color:var(--overlay)] px-2 py-1 text-[11px] text-white">
+          1 / {photos.length}
         </span>
       </button>
 
       {photos.length > 1 ? (
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-          {photos.slice(1).map((photo, index) => (
+        // Смужка мініатюр: чотири знімки й плитка «+N». Гортати горизонтально
+        // тридцять вісім фото на 390px — гірше, ніж відкрити повний екран.
+        <div className="mt-2 grid grid-cols-5 gap-1.5">
+          {photos.slice(1, 5).map((photo, index) => (
             <button
               key={photo}
               type="button"
               onClick={() => setOpenAt(index + 1)}
               aria-label={`Фото ${index + 2}`}
-              className="relative h-[54px] w-[72px] shrink-0 overflow-hidden rounded-card border border-line"
+              className="relative aspect-[4/3] overflow-hidden rounded-chip border border-edge"
             >
-              <Image src={photo} alt="" fill sizes="72px" className="object-cover" />
+              <Image src={photo} alt="" fill sizes="80px" className="object-cover" />
             </button>
           ))}
+
+          {photos.length > 5 ? (
+            <button
+              type="button"
+              onClick={() => setOpenAt(5)}
+              aria-label={`Ще ${photos.length - 5} фото`}
+              className="t-num sunken flex aspect-[4/3] items-center justify-center text-[13px] text-muted transition-colors duration-(--t-instant) hover:text-ink"
+            >
+              +{photos.length - 5}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -110,16 +123,16 @@ function Lightbox({
   }, [onClose, step])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink/95">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[color:var(--overlay)]">
       <header className="flex shrink-0 items-center justify-between px-3 py-2 text-white">
-        <span className="font-mono text-[13px] tabular-nums">
+        <span className="t-num text-[14px]">
           {current + 1} / {photos.length}
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Закрити"
-          className="h-9 px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+          className="t-micro tap px-3"
         >
           Закрити
         </button>
@@ -191,7 +204,7 @@ function ArrowButton({
       disabled={disabled}
       aria-label={label}
       className={cn(
-        'h-11 w-14 rounded-card border border-white/30 font-mono text-[18px] text-white',
+        't-num h-11 w-14 rounded-control border border-white/30 text-[18px] text-white',
         disabled && 'opacity-30',
       )}
     >

@@ -17,12 +17,10 @@ export function ManualFields({ listingId, fields }: { listingId: string; fields:
   if (fields.length === 0) return null
 
   return (
-    <form action={formAction} className="rounded-card border border-line bg-card p-3">
+    <form action={formAction} className="surface p-3">
       <input type="hidden" name="listingId" value={listingId} />
 
-      <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-        Виправлено руками
-      </h2>
+      <h2 className="t-micro text-faint">Виправлено руками</h2>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
         {fields.map((field) => (
@@ -33,14 +31,14 @@ export function ManualFields({ listingId, fields }: { listingId: string; fields:
             value={field}
             disabled={pending}
             title="Повернути значення з оголошення"
-            className="rounded-card border border-ink px-1.5 py-0.5 text-[11px] disabled:opacity-50"
+            className="chip"
           >
             {FIELD_LABELS[field] ?? field} ✕
           </button>
         ))}
       </div>
 
-      <p className="mt-1.5 text-[12px] text-muted">
+      <p className="t-body mt-2 text-faint">
         {state.error ?? 'Парсер їх не чіпає. Тап — знову довіряти оголошенню.'}
       </p>
     </form>

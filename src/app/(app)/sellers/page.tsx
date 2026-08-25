@@ -3,11 +3,14 @@ import Link from 'next/link'
 import { getSellerRows, type SellersSort } from '@/db/sellers-view'
 import { requireSession } from '@/lib/auth'
 import { cn } from '@/lib/cn'
-import { formatDate } from '@/lib/dates'
+import { daysOnSale, formatDate } from '@/lib/dates'
 import { cars, formatNumber, formatUsd } from '@/lib/format'
 import { looksLikeDealer, SELLER_TYPE_LABELS } from '@/lib/sellers'
 
-export const metadata = { title: 'Продавці — Car Hunt' }
+export const metadata = { title: 'Продавці' }
+
+/** Скільки авто показувати в картці, перш ніж відправити на сторінку продавця. */
+const CARS_SHOWN = 3
 
 /**
  * Продавці з цифрами. Питання, на яке має відповідати цей екран, одне: що це за
@@ -23,12 +26,19 @@ export default async function SellersPage({
   const { sort } = await searchParams
   const order: SellersSort = sort === 'contact' ? 'contact' : 'cars'
   const rows = await getSellerRows(order)
+  const dealers = rows.filter((row) => looksLikeDealer(row)).length
 
   return (
     <div className="mx-auto w-full max-w-[720px] space-y-4">
       <div className="flex items-baseline gap-2">
-        <h1 className="text-[19px] font-semibold leading-tight">Продавці</h1>
-        <span className="font-mono text-[14px] tabular-nums text-muted">{rows.length}</span>
+        <h1 className="t-title">Продавці</h1>
+        <span className="t-num text-[14px] text-faint">{rows.length}</span>
+
+        {dealers > 0 ? (
+          <span className="t-micro rounded-chip border border-warn px-1.5 py-1 text-warn">
+            перекупи · {dealers}
+          </span>
+        ) : null}
 
         <div className="ml-auto flex items-center gap-3">
           <SortLink active={order === 'cars'} href="/sellers">
@@ -41,7 +51,7 @@ export default async function SellersPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-4 text-[14px] text-muted">
+        <p className="t-body surface p-4 text-muted">
           Продавців ще немає. Вони зʼявляться самі, коли розпарситься перше оголошення.
         </p>
       ) : null}
@@ -49,26 +59,33 @@ export default async function SellersPage({
       {rows.map((row) => {
         const dealer = looksLikeDealer(row)
         return (
-          <Link
+          <section
             key={row.seller.id}
-            href={`/sellers/${row.seller.id}`}
-            className="block rounded-card border border-line bg-card p-3"
+            className="surface rib border-l-edge p-3 transition-colors duration-(--t-instant) hover:border-l-accent"
           >
-            <div className="flex items-baseline gap-2">
-              <h2 className="min-w-0 truncate text-[16px] font-semibold">
+            <Link href={`/sellers/${row.seller.id}`} className="block">
+            <div className="flex items-center gap-2.5">
+              {/* Плитка з ініціалом замість аватарки: фото продавця в нас немає
+                  і не буде, а рядок без якоря читається гірше. */}
+              <span className="t-num sunken flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-[15px] text-muted">
+                {(row.seller.name?.trim()[0] ?? '—').toUpperCase()}
+              </span>
+
+              <h2 className="t-title min-w-0 flex-1 truncate text-[16px]">
                 {row.seller.name ?? 'Без імені'}
               </h2>
+
               {dealer ? (
-                <span className="shrink-0 rounded-card border border-ink px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]">
-                  схоже на перекупа
+                <span className="t-micro shrink-0 rounded-chip border border-warn px-1.5 py-1 text-warn">
+                  перекуп
                 </span>
               ) : null}
-              <span className="ml-auto shrink-0 font-mono text-[13px] tabular-nums text-muted">
+              <span className="t-num shrink-0 text-[13px] text-faint">
                 {row.active}/{row.total} {cars(row.total)}
               </span>
             </div>
 
-            <p className="mt-1 text-[12px] text-muted">
+            <p className="t-body mt-1.5 text-faint">
               {SELLER_TYPE_LABELS[row.seller.type]}
               {row.avgPrice ? ` · середня ${formatUsd(row.avgPrice)}` : null}
               {row.drops > 0 ? ` · знижував ${formatNumber(row.drops)}×` : null}
@@ -76,11 +93,62 @@ export default async function SellersPage({
             </p>
 
             {row.seller.phones.length > 0 ? (
-              <p className="mt-1 font-mono text-[12px] tabular-nums text-muted">
-                {row.seller.phones.join(' · ')}
-              </p>
+                <p className="t-num mt-1 text-[12px] text-muted">
+                  {row.seller.phones.join(' · ')}
+                </p>
+              ) : null}
+            </Link>
+
+            {row.seller.phones.length > 0 ? (
+              <a
+                href={`tel:${row.seller.phones[0]}`}
+                className="btn tap mt-2 w-full"
+                aria-label={`Подзвонити ${row.seller.name ?? 'продавцю'}`}
+              >
+                Подзвонити
+              </a>
             ) : null}
-          </Link>
+
+            {/* Що саме людина продає — прямо в картці (аркуш 07): по трьох
+                однакових «гаражних» оголошеннях перекуп видно без переходу. */}
+            {row.cars.length > 0 ? (
+              <ul className="mt-2 divide-y divide-edge border-t border-edge">
+                {row.cars.slice(0, CARS_SHOWN).map((car) => (
+                  <li key={car.id}>
+                    <Link href={`/listing/${car.id}`} className="flex items-baseline gap-2 py-1.5">
+                      <span
+                        className={cn(
+                          't-body min-w-0 flex-1 truncate',
+                          car.removed && 'text-faint line-through decoration-1',
+                        )}
+                      >
+                        {car.title ?? 'Без назви'}
+                      </span>
+                      <span
+                        className={cn(
+                          't-num shrink-0 text-[13px]',
+                          car.removed && 'text-faint line-through decoration-1',
+                        )}
+                      >
+                        {formatUsd(car.priceUsd)}
+                      </span>
+                      <span className="t-num w-9 shrink-0 text-right text-[12px] text-faint">
+                        {car.removed ? 'знято' : `${daysOnSale(car.publishedAt) ?? '—'}д`}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+
+                {row.cars.length > CARS_SHOWN ? (
+                  <li className="pt-1.5">
+                    <Link href={`/sellers/${row.seller.id}`} className="t-micro text-accent-lit">
+                      Ще {row.cars.length - CARS_SHOWN} →
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
+          </section>
         )
       })}
     </div>
@@ -97,7 +165,10 @@ function SortLink({
   children: React.ReactNode
 }) {
   return (
-    <Link href={href} className={cn('text-[12px]', active ? 'font-semibold' : 'text-muted')}>
+    <Link
+      href={href}
+      className={cn('t-micro tap', active ? 'text-accent-lit' : 'text-faint hover:text-ink')}
+    >
       {children}
     </Link>
   )

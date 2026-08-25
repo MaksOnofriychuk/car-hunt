@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
 
+import { DateField } from './DateField'
+
 import { createListing, saveListing } from '@/app/(app)/listing/actions'
 import { cn } from '@/lib/cn'
 import { IDLE } from '@/lib/forms'
@@ -110,24 +112,29 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
 
       <Section title="Оголошення">
         <div className="grid grid-cols-2 gap-2">
-          <Field
-            label="Опубліковано"
-            name="publishedAt"
-            type="date"
-            defaultValue={values.publishedAt}
-            hint="З цього рахуються дні в оголошенні"
-          />
+          <label className="block">
+            <span className="t-micro text-faint">Опубліковано</span>
+            <DateField
+              name="publishedAt"
+              defaultValue={values.publishedAt}
+              ariaLabel="Дата публікації"
+              className="mt-1"
+            />
+            <span className="t-micro mt-1 block normal-case tracking-normal text-faint">
+              З цього рахуються дні в оголошенні
+            </span>
+          </label>
           <Field label="Посилання" name="url" defaultValue={values.url} placeholder="https://" />
         </div>
         <label className="mt-2 block">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+          <span className="t-micro text-faint">
             Опис
           </span>
           <textarea
             name="descriptionText"
             rows={5}
             defaultValue={values.descriptionText}
-            className="mt-1 w-full rounded-card border border-line bg-card px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
+            className="field mt-1"
           />
         </label>
       </Section>
@@ -143,14 +150,14 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
           />
         </div>
         <div className="mt-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+          <span className="t-micro text-faint">
             Хто продає
           </span>
           <div className="mt-1 flex gap-1.5">
             {SELLER_TYPES.map((type) => (
               <label
                 key={type.value}
-                className="flex h-9 flex-1 cursor-pointer items-center justify-center rounded-card border border-line text-[12px] font-semibold has-checked:border-ink has-checked:bg-concrete"
+                className="chip tap flex-1 cursor-pointer has-checked:border-accent has-checked:bg-accent/12 has-checked:text-accent-lit"
               >
                 <input
                   type="radio"
@@ -175,13 +182,13 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
                 <img
                   src={photo.url}
                   alt=""
-                  className="h-[54px] w-[72px] rounded-card border border-line object-cover"
+                  className="h-[54px] w-[72px] rounded-chip border border-edge object-cover"
                 />
                 <button
                   type="button"
                   onClick={() => setPhotos((list) => list.filter((item) => item.key !== photo.key))}
                   aria-label="Прибрати фото"
-                  className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full border border-ink bg-card text-[11px] leading-none"
+                  className="absolute -right-1.5 -top-1.5 h-6 w-6 rounded-full border border-edge bg-raised text-[11px] leading-none text-muted"
                 >
                   ✕
                 </button>
@@ -190,7 +197,7 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
           </div>
         ) : null}
 
-        <label className="flex h-10 cursor-pointer items-center justify-center rounded-card border border-line text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+        <label className="btn tap w-full cursor-pointer border-dashed text-muted">
           <input
             type="file"
             accept="image/*"
@@ -203,13 +210,13 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
           />
           {uploading > 0 ? `Завантажую… ${uploading}` : 'Додати фото'}
         </label>
-        <p className="mt-1.5 text-[12px] text-muted">
+        <p className={cn('t-body mt-1.5', photoError ? 'text-danger' : 'text-faint')}>
           {photoError ?? 'Стискаються в браузері до 1920 px, щоб не летіли по 5 МБ з телефона.'}
         </p>
       </Section>
 
       {state.error ? (
-        <p className="border-l-[3px] border-signal bg-card py-2 pl-3 text-[13px]" role="alert">
+        <p className="t-body sunken rib border-l-danger px-3 py-2 text-danger" role="alert">
           {state.error}
         </p>
       ) : null}
@@ -218,16 +225,13 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
         <button
           type="submit"
           disabled={busy}
-          className={cn(
-            'h-11 flex-1 rounded-card border border-ink bg-ink text-[12px] font-semibold uppercase tracking-[0.08em] text-white',
-            busy && 'opacity-50',
-          )}
+          className="btn btn-accent tap flex-1"
         >
           {pending ? 'Зберігаю…' : listingId ? 'Зберегти' : 'Додати авто'}
         </button>
         <Link
           href={listingId ? `/listing/${listingId}` : '/'}
-          className="flex h-11 items-center rounded-card border border-line px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+          className="btn btn-quiet tap px-3 text-muted"
         >
           Скасувати
         </Link>
@@ -238,10 +242,8 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-line bg-card p-3">
-      <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-        {title}
-      </h2>
+    <section className="surface p-3">
+      <h2 className="t-micro mb-2 text-faint">{title}</h2>
       {children}
     </section>
   )
@@ -270,7 +272,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+      <span className="t-micro text-faint">
         {label}
       </span>
       <input
@@ -281,12 +283,9 @@ function Field({
         required={required}
         autoFocus={autoFocus}
         inputMode={numeric ? 'numeric' : undefined}
-        className={cn(
-          'mt-1 h-10 w-full rounded-card border border-line bg-card px-2.5 text-[14px] placeholder:text-muted',
-          numeric && 'font-mono tabular-nums',
-        )}
+        className={cn('field mt-1', numeric && 'field-num')}
       />
-      {hint ? <span className="mt-1 block text-[11px] text-muted">{hint}</span> : null}
+      {hint ? <span className="t-micro mt-1 block normal-case tracking-normal text-faint">{hint}</span> : null}
     </label>
   )
 }

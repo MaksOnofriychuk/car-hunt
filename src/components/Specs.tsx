@@ -3,18 +3,20 @@ import type { ReactNode } from 'react'
 import { CopyValue } from './CopyValue'
 
 import type { Listing } from '@/db/schema'
-import { formatLiters, formatNumber } from '@/lib/format'
+import { formatKm, formatLiters, formatNumber } from '@/lib/format'
 import type { ListingSpecs } from '@/lib/specs'
 
 /**
- * Характеристики авто. Головне — в колонках `listings` (по них колись шукати),
- * решта приходить із `snapshot_raw.specs` списком «як на сторінці».
+ * Характеристики авто плитками: рік, пробіг і місто — те, за чим авто впізнають,
+ * тому вони йдуть першими й читаються з одного погляду. Головне лежить у
+ * колонках `listings` (по них колись шукати), решта приходить із
+ * `snapshot_raw.specs` списком «як на сторінці».
  */
 
-type Row = { label: string; value: ReactNode }
+type Tile = { label: string; value: ReactNode }
 
-/** Підписи, які вже показані зверху, — у списку «ще з оголошення» не дублюємо. */
-const SHOWN = /двигун|коробка|привід|колір|покоління/i
+/** Підписи, які вже показані плитками, — у списку «ще з оголошення» не дублюємо. */
+const SHOWN = /двигун|коробка|привід|колір|покоління|пробіг|рік/i
 
 function join(parts: (string | null | undefined)[]): string | null {
   const clean = parts.filter((part): part is string => Boolean(part))
@@ -22,61 +24,62 @@ function join(parts: (string | null | undefined)[]): string | null {
 }
 
 export function Specs({ listing, specs }: { listing: Listing; specs: ListingSpecs }) {
-  const rows: Row[] = []
-  const add = (label: string, value: string | null | undefined) => {
-    if (value) rows.push({ label, value })
+  const tiles: Tile[] = []
+  const add = (label: string, value: string | null | undefined, mono = false) => {
+    if (value) tiles.push({ label, value: mono ? <span className="t-num">{value}</span> : value })
   }
 
-  add(
-    'Кузов',
-    join([
-      listing.bodyType,
-      specs.doors ? `${specs.doors} дверей` : null,
-      specs.seats ? `${specs.seats} місць` : null,
-    ]),
-  )
-  add('Двигун', join([listing.fuelType, formatLiters(listing.engineVolume), specs.power]))
-  add('Коробка', listing.transmission)
+  add('Рік', listing.year ? String(listing.year) : null, true)
+  add('Пробіг', listing.mileageKm ? formatKm(listing.mileageKm) : null, true)
+  add('Місто', listing.city)
+  add('Двигун', join([formatLiters(listing.engineVolume), listing.fuelType]))
+  add('КПП', listing.transmission)
   add('Привід', listing.driveType)
+  add('Кузов', join([listing.bodyType, specs.doors ? `${specs.doors} дв.` : null]))
   add('Колір', listing.color)
-  add('Покоління', join([specs.generation, specs.equipment]))
-  add('Номер', listing.plateNumber)
+  add('Потужність', specs.power)
+  add('Номер', listing.plateNumber, true)
 
   if (listing.vin) {
-    rows.push({ label: 'VIN', value: <CopyValue value={listing.vin} label="VIN" /> })
+    tiles.push({ label: 'VIN', value: <CopyValue value={listing.vin} label="VIN" /> })
   }
 
   const extra = specs.pairs.filter((pair) => !SHOWN.test(pair.label))
   const stats = join([
+    specs.generation,
+    specs.equipment,
     specs.views ? `${formatNumber(specs.views)} переглядів` : null,
     specs.favorites ? `${formatNumber(specs.favorites)} в обраному` : null,
   ])
 
-  if (rows.length === 0 && extra.length === 0 && specs.checks.length === 0) return null
+  if (tiles.length === 0 && extra.length === 0 && specs.checks.length === 0) return null
 
   return (
-    <section className="rounded-card border border-line bg-card p-3">
-      <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-        Характеристики
-      </h2>
+    <section className="surface p-3">
+      <h2 className="t-micro text-faint">Характеристики</h2>
 
-      {rows.length > 0 ? (
-        <dl className="mt-2 grid grid-cols-[92px_1fr] gap-x-3 gap-y-1.5">
-          {rows.map((row) => (
-            <div key={row.label} className="contents">
-              <dt className="text-[12px] text-muted">{row.label}</dt>
-              <dd className="text-[14px]">{row.value}</dd>
+      {tiles.length > 0 ? (
+        // Три в рядок на 390px: плитка виходить ~112px — «214 000» вміщається,
+        // а VIN займає всю ширину, бо інакше довелося б різати посередині.
+        <dl className="mt-2 grid grid-cols-3 gap-1.5">
+          {tiles.map((tile) => (
+            <div
+              key={tile.label}
+              className={tile.label === 'VIN' ? 'sunken col-span-3 p-2' : 'sunken p-2'}
+            >
+              <dt className="t-micro text-faint">{tile.label}</dt>
+              <dd className="t-body mt-0.5 truncate font-semibold">{tile.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
 
       {specs.badges.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {specs.badges.map((badge) => (
             <span
               key={badge}
-              className="rounded-card border border-line px-1.5 py-0.5 text-[11px] text-muted"
+              className="t-micro rounded-chip border border-edge px-1.5 py-1 text-muted"
             >
               {badge}
             </span>
@@ -85,26 +88,22 @@ export function Specs({ listing, specs }: { listing: Listing; specs: ListingSpec
       ) : null}
 
       {extra.length > 0 ? (
-        <dl className="mt-3 space-y-2 border-t border-line pt-3">
+        <dl className="mt-3 space-y-2 border-t border-edge pt-3">
           {extra.map((pair) => (
             <div key={pair.label}>
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">
-                {pair.label}
-              </dt>
-              <dd className="text-[13px] leading-snug">{pair.value}</dd>
+              <dt className="t-micro text-faint">{pair.label}</dt>
+              <dd className="t-body">{pair.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
 
       {specs.checks.length > 0 ? (
-        <div className="mt-3 border-t border-line pt-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">
-            Перевірка за держреєстрами
-          </p>
+        <div className="mt-3 border-t border-edge pt-3">
+          <p className="t-micro text-faint">Перевірка за держреєстрами</p>
           <ul className="mt-1 space-y-0.5">
             {specs.checks.map((check) => (
-              <li key={check} className="text-[13px] leading-snug">
+              <li key={check} className="t-body">
                 {check}
               </li>
             ))}
@@ -112,7 +111,7 @@ export function Specs({ listing, specs }: { listing: Listing; specs: ListingSpec
         </div>
       ) : null}
 
-      {stats ? <p className="mt-3 text-[12px] text-muted">{stats}</p> : null}
+      {stats ? <p className="t-body mt-3 text-faint">{stats}</p> : null}
     </section>
   )
 }

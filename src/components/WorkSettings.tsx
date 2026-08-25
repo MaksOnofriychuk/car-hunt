@@ -20,11 +20,11 @@ export function WorkSettings({ settings }: { settings: Settings }) {
   const [state, formAction, pending] = useActionState(saveWorkSettings, IDLE)
 
   return (
-    <form action={formAction} className="rounded-card border border-line bg-card p-3">
-      <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Робота</h2>
+    <form action={formAction} className="surface p-3">
+      <h2 className="t-micro text-faint">Робота</h2>
 
       <fieldset className="mt-3">
-        <legend className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+        <legend className="t-micro text-faint">
           Коли дзвонити після дзвінка
         </legend>
         <div className="mt-1 flex flex-wrap gap-1.5">
@@ -42,22 +42,22 @@ export function WorkSettings({ settings }: { settings: Settings }) {
       </fieldset>
 
       <label className="mt-3 block">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+        <span className="t-micro text-faint">
           «Довго висить» після, днів
         </span>
         <input
           name="longStandingDays"
           inputMode="numeric"
           defaultValue={settings.longStandingDays}
-          className="mt-1 h-9 w-24 rounded-card border border-line bg-card px-2.5 font-mono text-[14px] tabular-nums"
+          className="field field-num mt-1 w-24"
         />
-        <span className="mt-1 block text-[11px] text-muted">
+        <span className="t-body mt-1 block text-faint">
           Від цього числа залежить підсвічування на смузі номерного знака і пресет «Довго висять».
         </span>
       </label>
 
       <fieldset className="mt-3">
-        <legend className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+        <legend className="t-micro text-faint">
           Валюта
         </legend>
         <div className="mt-1 flex flex-wrap gap-1.5">
@@ -75,7 +75,7 @@ export function WorkSettings({ settings }: { settings: Settings }) {
       </fieldset>
 
       <fieldset className="mt-3">
-        <legend className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+        <legend className="t-micro text-faint">
           Сортування черги
         </legend>
         <div className="mt-1 flex flex-wrap gap-1.5">
@@ -96,12 +96,12 @@ export function WorkSettings({ settings }: { settings: Settings }) {
         <button
           type="submit"
           disabled={pending}
-          className="h-9 rounded-card border border-ink px-3 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+          className="btn tap px-3"
         >
           {pending ? 'Зберігаю…' : 'Зберегти'}
         </button>
-        {state.error ? <span className="text-[12px] font-semibold">{state.error}</span> : null}
-        {state.ok ? <span className="text-[12px] text-muted">Записано</span> : null}
+        {state.error ? <span className="t-body text-danger">{state.error}</span> : null}
+        {state.ok ? <span className="t-body text-faint">Записано</span> : null}
       </div>
     </form>
   )
@@ -121,8 +121,8 @@ function Radio({
   return (
     <label
       className={cn(
-        'h-9 cursor-pointer rounded-card border px-2.5 text-[12px] leading-9',
-        'border-line text-muted has-checked:border-ink has-checked:bg-concrete has-checked:font-semibold has-checked:text-ink',
+        'chip chip-sm cursor-pointer',
+        'has-checked:border-accent has-checked:bg-accent/12 has-checked:text-accent-lit',
       )}
     >
       <input type="radio" name={name} value={value} defaultChecked={checked} className="sr-only" />

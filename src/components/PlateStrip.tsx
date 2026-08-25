@@ -1,78 +1,64 @@
 import { cn } from '@/lib/cn'
-import { days as pluralDays } from '@/lib/format'
 
 /**
- * Підпис проєкту зі SPEC: смуга в стилі українського номерного знака.
- * Синій блок з «UA» ліворуч — євросмуга справжнього знака, далі кількість днів,
- * які авто висить в оголошенні. Це головна метрика для торгу.
+ * Знак проєкту: український номерний. Синій блок з «UA» ліворуч — євросмуга
+ * справжнього знака, далі світле поле з написом.
+ *
+ * Поле знака світле в **обох** темах (`--color-plate-face`): номерний знак не
+ * буває чорним, і саме цим він упізнається на темному екрані.
  */
 
 const SIZES = {
-  sm: { box: 'h-6', ua: 'w-[18px] text-[8px]', value: 'text-[13px]', label: 'text-[9px]' },
-  md: { box: 'h-7', ua: 'w-[22px] text-[9px]', value: 'text-[16px]', label: 'text-[10px]' },
-  lg: { box: 'h-11', ua: 'w-8 text-[11px]', value: 'text-[20px]', label: 'text-[11px]' },
+  sm: { box: 'h-7', band: 'w-[22px]', ua: 'text-[8px]', label: 'text-[13px]' },
+  md: { box: 'h-9', band: 'w-[26px]', ua: 'text-[9px]', label: 'text-[16px]' },
+  lg: { box: 'h-12', band: 'w-[34px]', ua: 'text-[11px]', label: 'text-[22px]' },
 } as const
 
-/** Понад два місяці в продажу — продавець уже втомився, підсвічуємо акцентом. */
-const LONG_STANDING_DAYS = 60
-
 type Props = {
-  days?: number | null
-  label?: string
+  label: string
   size?: keyof typeof SIZES
   className?: string
-  /** Поріг із налаштувань: у кожного своє уявлення про «довго». */
-  longStandingDays?: number
+  /** Сховати поле знака на вузькому екрані, лишивши тільки синій блок UA. */
+  compactBelow?: boolean
 }
 
-export function PlateStrip({
-  days,
-  label,
-  size = 'md',
-  className,
-  longStandingDays = LONG_STANDING_DAYS,
-}: Props) {
+export function PlateStrip({ label, size = 'md', className, compactBelow = false }: Props) {
   const s = SIZES[size]
-  const longStanding = typeof days === 'number' && days > longStandingDays
 
   return (
     <div
       className={cn(
-        'flex items-stretch overflow-hidden rounded-card border border-ink bg-card',
+        'flex items-stretch overflow-hidden rounded-plate border border-edge bg-plate-face',
         s.box,
         className,
       )}
     >
       <div
         className={cn(
-          'flex shrink-0 items-center justify-center bg-plate font-mono font-semibold leading-none text-white',
-          s.ua,
+          'flex shrink-0 flex-col items-center justify-center gap-[2px] bg-plate-band px-1 text-white',
+          s.band,
         )}
       >
-        UA
+        {/* Дві риски — спрощені зорі євросмуги: у цьому розмірі коло зірок
+            перетворюється на пляму, а риски лишаються рисками. */}
+        <span className="h-[2px] w-2/3 rounded-full bg-white/70" aria-hidden />
+        <span className={cn('t-num font-semibold leading-none', s.ua)}>UA</span>
       </div>
 
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 px-2">
-        {label ? (
-          <span className={cn('truncate font-mono font-semibold uppercase tracking-[0.16em]', s.value)}>
-            {label}
-          </span>
-        ) : (
-          <>
-            <span
-              className={cn(
-                'font-mono font-semibold leading-none tabular-nums',
-                s.value,
-                longStanding && 'text-plate',
-              )}
-            >
-              {days ?? '—'}
-            </span>
-            <span className={cn('truncate uppercase leading-none tracking-[0.08em] text-muted', s.label)}>
-              {days == null ? 'дата публікації невідома' : `${pluralDays(days)} в оголошенні`}
-            </span>
-          </>
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 items-center px-2.5',
+          compactBelow && 'hidden sm:flex',
         )}
+      >
+        <span
+          className={cn(
+            't-num truncate font-semibold uppercase tracking-[0.22em] text-[color:var(--color-plate-ink)]',
+            s.label,
+          )}
+        >
+          {label}
+        </span>
       </div>
     </div>
   )

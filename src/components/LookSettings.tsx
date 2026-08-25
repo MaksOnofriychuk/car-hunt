@@ -12,6 +12,7 @@ import {
   SIZES,
   SIZE_LABELS,
   THEMES,
+  THEME_HINT,
   THEME_LABELS,
   writeLook,
   type Look,
@@ -33,19 +34,35 @@ export function LookSettings({ look }: { look: Look }) {
   }
 
   return (
-    <section className="rounded-card border border-line bg-card p-3">
-      <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Вигляд</h2>
-      <p className="mt-1 text-[12px] text-muted">
+    <section className="surface p-3">
+      <h2 className="t-micro text-faint">Вигляд</h2>
+      <p className="t-body mt-1 text-faint">
         Зберігається на цьому пристрої: у кожного свій екран і свої очі.
       </p>
 
-      <Row label="Тема">
-        {THEMES.map((theme) => (
-          <Chip key={theme} active={draft.theme === theme} onClick={() => apply({ theme })}>
-            {THEME_LABELS[theme]}
-          </Chip>
-        ))}
-      </Row>
+      <div className="mt-3">
+        <span className="t-micro text-faint">Тема</span>
+        {/* Сегментний перемикач, як у макеті: три стани в одній рамці. */}
+        <div className="sunken mt-1 flex gap-1 rounded-control p-1">
+          {THEMES.map((theme) => (
+            <button
+              key={theme}
+              type="button"
+              onClick={() => apply({ theme })}
+              aria-pressed={draft.theme === theme}
+              className={cn(
+                'flex h-10 flex-1 items-center justify-center rounded-chip px-2 text-[14px] transition-colors duration-(--t-base)',
+                draft.theme === theme
+                  ? 'bg-accent font-semibold text-white'
+                  : 'text-muted hover:text-ink',
+              )}
+            >
+              {THEME_LABELS[theme]}
+            </button>
+          ))}
+        </div>
+        <p className="t-body mt-1 text-faint">{THEME_HINT}</p>
+      </div>
 
       <Row label="Розмір інтерфейсу">
         {SIZES.map((size) => (
@@ -77,7 +94,7 @@ export function LookSettings({ look }: { look: Look }) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mt-3">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+      <span className="t-micro text-faint">
         {label}
       </span>
       <div className="mt-1 flex flex-wrap gap-1.5">{children}</div>
@@ -99,10 +116,7 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cn(
-        'h-9 rounded-card border px-2.5 text-[12px]',
-        active ? 'border-ink bg-concrete font-semibold' : 'border-line text-muted',
-      )}
+      className={cn('chip chip-sm', active && 'chip-on')}
     >
       {children}
     </button>

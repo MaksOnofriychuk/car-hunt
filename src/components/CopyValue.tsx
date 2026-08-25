@@ -16,8 +16,8 @@ export function CopyValue({ value, label }: { value: string; label: string }) {
   }, [copied])
 
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="font-mono text-[13px] tracking-[0.02em]">{value}</span>
+    <span className="flex items-center gap-1.5">
+      <span className="t-num min-w-0 flex-1 truncate">{value}</span>
       <button
         type="button"
         aria-label={`Скопіювати ${label}`}
@@ -29,7 +29,7 @@ export function CopyValue({ value, label }: { value: string; label: string }) {
             // Буфер недоступний (http або відмова) — мовчки лишаємо як є.
           }
         }}
-        className="rounded-card border border-line px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted"
+        className="t-micro shrink-0 rounded-chip border border-edge px-1.5 py-1 text-faint transition-colors duration-(--t-instant) hover:text-ink"
       >
         {copied ? 'ок' : 'копі'}
       </button>

@@ -7,16 +7,22 @@
  * одразу малює потрібне — інакше сторінка блимала б світлою темою перед темною.
  */
 
-export const THEMES = ['system', 'light', 'dark'] as const
+export const THEMES = ['dark', 'light'] as const
 export type Theme = (typeof THEMES)[number]
 
 export const THEME_LABELS: Record<Theme, string> = {
-  system: 'Як у системи',
-  light: 'Світла',
   dark: 'Темна',
+  light: 'Світла',
 }
 
-/** Чотири рівні. Множник іде в `zoom`, тому росте весь інтерфейс, не лише текст. */
+/** Підказка під перемикачем. Теми рівно дві — системної «авто» немає. */
+export const THEME_HINT = 'Темна — основна. Світла — повноцінна пара, не інверсія. Перехід 320 мс.'
+
+/**
+ * Чотири рівні розміру. Міняють самі типографічні ролі, а не масштаб усього:
+ * підпис мусить лишатись компактним, навіть коли ціна виростає. Значення — у
+ * `globals.css`, тут лише перелік і підписи.
+ */
 export const SIZES = ['s', 'm', 'l', 'xl'] as const
 export type Size = (typeof SIZES)[number]
 
@@ -27,24 +33,21 @@ export const SIZE_LABELS: Record<Size, string> = {
   xl: 'Великий',
 }
 
-export const SIZE_ZOOM: Record<Size, number> = { s: 0.92, m: 1, l: 1.14, xl: 1.3 }
-
 /**
  * Шрифти інтерфейсу. Усі чотири — з кирилицею, інакше український текст
  * посипався б на системний шрифт.
  *
- * SPEC просить Archivo, а серед «підвищеної читабельності» проситься Atkinson
- * Hyperlegible — але **в жодного з них немає кирилиці**. Тому роль «читабельного»
- * грає Fira Sans: її малювали саме заради розбірливості на екрані, і в неї
- * повна кирилиця.
+ * Типовий — Inter: саме він на макетах нової системи. Роль «читабельного»
+ * грає Fira Sans, бо ні Archivo зі SPEC, ні Atkinson Hyperlegible кирилиці не
+ * мають — український текст сипався б на системний шрифт.
  */
-export const FONTS = ['plex', 'fira', 'inter', 'rubik'] as const
+export const FONTS = ['inter', 'plex', 'fira', 'rubik'] as const
 export type Font = (typeof FONTS)[number]
 
 export const FONT_LABELS: Record<Font, string> = {
+  inter: 'Inter',
   plex: 'IBM Plex Sans',
   fira: 'Fira Sans — розбірливіша',
-  inter: 'Inter',
   rubik: 'Rubik',
 }
 
@@ -68,9 +71,10 @@ export const LOOK_COOKIE = 'car_hunt_look'
 export const LOOK_MAX_AGE = 365 * 24 * 60 * 60
 
 export const DEFAULT_LOOK: Look = {
-  theme: 'system',
+  // Темна — основна тема системи, а не наслідок системних налаштувань.
+  theme: 'dark',
   size: 'm',
-  font: 'plex',
+  font: 'inter',
   density: 'normal',
 }
 

@@ -59,10 +59,51 @@ export function formatPrice(
   return formatUsd(usd)
 }
 
+/**
+ * Та сама ціна, але розкладена: у макеті знак валюти дрібний і тьмяний, а
+ * число — головне на екрані. Склеєний рядок так не набереш.
+ */
+export function splitPrice(
+  usd: number | null | undefined,
+  uah: number | null | undefined,
+  currency: 'usd' | 'uah' | 'both',
+): { prefix: string | null; value: string; suffix: string | null; second: string | null } {
+  if (currency === 'uah' && uah != null) {
+    return { prefix: null, value: groupDigits(uah), suffix: '₴', second: null }
+  }
+  if (currency === 'both' && usd != null && uah != null) {
+    return { prefix: '$', value: groupDigits(usd), suffix: null, second: formatUah(uah) }
+  }
+  return {
+    prefix: usd == null ? null : '$',
+    value: usd == null ? '—' : groupDigits(usd),
+    suffix: null,
+    second: null,
+  }
+}
+
 /** Давність події коротко: «сьогодні», «1 д», «12 д». */
 export function shortAgo(daysAgo: number): string {
   if (daysAgo <= 0) return 'сьогодні'
   return `${daysAgo}${NBSP}д`
+}
+
+/**
+ * Той самий підпис, але коротко — для картки в черзі, де поруч стоїть назва
+ * авто. «прострочено 4 дні» там зʼїдає пів рядка, «−4 дн» каже те саме.
+ * Дати немає — не кажемо нічого: порожнє місце чесніше за «дата не задана».
+ */
+export function contactShort(
+  nextContactAt: string | null,
+  today: string,
+): { text: string | null; overdue: boolean } {
+  if (!nextContactAt) return { text: null, overdue: false }
+
+  const diff = daysBetween(today, nextContactAt)
+  if (diff < 0) return { text: `−${-diff}${NBSP}дн`, overdue: true }
+  if (diff === 0) return { text: 'сьогодні', overdue: false }
+  if (diff === 1) return { text: 'завтра', overdue: false }
+  return { text: `через ${diff}${NBSP}дн`, overdue: false }
 }
 
 /** Підпис «коли дзвонити» для картки і списку. */

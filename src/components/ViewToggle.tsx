@@ -28,10 +28,7 @@ export function ViewToggle({ prefs }: { prefs: ViewPrefs }) {
           type="button"
           onClick={() => set(mode)}
           aria-pressed={prefs.mode === mode}
-          className={cn(
-            'h-8 rounded-card border px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]',
-            prefs.mode === mode ? 'border-ink bg-concrete' : 'border-line text-muted',
-          )}
+          className={cn('chip tap', prefs.mode === mode && 'chip-on')}
         >
           {mode === 'list' ? 'Список' : 'Таблиця'}
         </button>

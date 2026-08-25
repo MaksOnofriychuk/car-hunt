@@ -28,7 +28,7 @@ export function PresetBar({
   const all = [...builtIn, ...presets]
 
   return (
-    <section className="rounded-card border border-line bg-card p-3">
+    <section className="surface p-3">
       <div className="flex flex-wrap items-center gap-1.5">
         {all.map((preset) => {
           const active = isPresetActive(preset, search)
@@ -36,10 +36,7 @@ export function PresetBar({
             <span key={preset.key} className="inline-flex items-center">
               <Link
                 href={preset.query ? `/?${preset.query}` : '/'}
-                className={cn(
-                  'h-8 rounded-card border px-2 text-[12px] leading-8',
-                  active ? 'border-ink bg-concrete font-semibold' : 'border-line',
-                )}
+                className={cn('chip tap', active && 'chip-on')}
               >
                 {preset.name}
               </Link>
@@ -50,7 +47,7 @@ export function PresetBar({
                   <button
                     type="submit"
                     aria-label={`Прибрати набір ${preset.name}`}
-                    className="px-1 text-[12px] text-muted"
+                    className="tap px-1 text-faint"
                   >
                     ✕
                   </button>
@@ -64,7 +61,7 @@ export function PresetBar({
           <button
             type="button"
             onClick={() => setSaving(true)}
-            className="px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-plate"
+            className="chip chip-sm"
           >
             Зберегти набір
           </button>
@@ -79,19 +76,19 @@ export function PresetBar({
             autoFocus
             maxLength={40}
             placeholder="Назва набору"
-            className="h-9 min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 text-[14px] placeholder:text-muted"
+            className="field min-w-0 flex-1"
           />
           <button
             type="submit"
             disabled={savePending}
-            className="h-9 rounded-card border border-ink px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+            className="btn tap px-3"
           >
             {savePending ? 'Пишу…' : 'Ок'}
           </button>
           <button
             type="button"
             onClick={() => setSaving(false)}
-            className="h-9 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+            className="btn btn-quiet tap px-2 text-faint"
           >
             Скасувати
           </button>
@@ -99,7 +96,7 @@ export function PresetBar({
       ) : null}
 
       {saveState.error ? (
-        <p className="mt-1.5 text-[12px] font-semibold">{saveState.error}</p>
+        <p className="t-body mt-1.5 text-danger">{saveState.error}</p>
       ) : null}
     </section>
   )

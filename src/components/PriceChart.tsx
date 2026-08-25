@@ -1,89 +1,68 @@
 import type { PricePoint } from '@/db/schema'
+import { cn } from '@/lib/cn'
 import { formatDate } from '@/lib/dates'
-import { formatUsd } from '@/lib/format'
+import { formatNumber } from '@/lib/format'
 
 /**
- * Спарклайн зміни ціни. Ступінчаста лінія, а не пряма між точками: ціна тримається
- * незмінною до наступного спостереження, тому інтерполяція тут була б брехнею.
- * Одна серія → легенда не потрібна, підписані перша й остання точки.
- * Табличний еквівалент — стрічка подій нижче, там кожна зміна ціни окремим записом.
+ * Історія ціни стовпчиками. Не лінія: спостережень зазвичай три-чотири, і між
+ * ними ціна не «росте плавно» — вона тримається, поки продавець її не змінить.
+ * Стовпчик = одне спостереження, останній підсвічений акцентом.
+ *
+ * Табличний еквівалент — стрічка подій нижче: там кожна зміна ціни окремим
+ * записом із датою й обома сумами.
  */
 
-const W = 320
-const H = 96
-const LEFT = 12
-const RIGHT = W - 12
-const TOP = 32
-const BOTTOM = 68
+/** Більше шести стовпчиків на 390px — це вже частокіл. Показуємо останні. */
+const MAX_BARS = 6
+/** Найнижчий стовпчик не сходить нанівець: інакше не видно, що він узагалі є. */
+const MIN_HEIGHT = 18
 
 export function PriceChart({ points }: { points: PricePoint[] }) {
   if (points.length < 2) return null
 
-  const prices = points.map((p) => p.priceUsd)
+  const shown = points.slice(-MAX_BARS)
+  const prices = shown.map((point) => point.priceUsd)
   const min = Math.min(...prices)
   const max = Math.max(...prices)
   const span = max - min || 1
 
-  const t0 = points[0].seenAt.getTime()
-  const tSpan = points[points.length - 1].seenAt.getTime() - t0 || 1
-
-  const x = (point: PricePoint) => LEFT + ((point.seenAt.getTime() - t0) / tSpan) * (RIGHT - LEFT)
-  const y = (price: number) => BOTTOM - ((price - min) / span) * (BOTTOM - TOP)
-
-  // Ступінчастий шлях: ціна тримається, потім стрибає.
-  let path = `M ${x(points[0])} ${y(points[0].priceUsd)}`
-  for (let i = 1; i < points.length; i += 1) {
-    path += ` L ${x(points[i])} ${y(points[i - 1].priceUsd)} L ${x(points[i])} ${y(points[i].priceUsd)}`
-  }
-
-  const first = points[0]
-  const last = points[points.length - 1]
-
   return (
     <figure className="mt-3">
-      <figcaption className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+      <figcaption className="t-micro text-faint">
         Ціна в оголошенні
+        {points.length > shown.length ? ` · останні ${shown.length} з ${points.length}` : null}
       </figcaption>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="mt-1 w-full" role="img" aria-label="Графік зміни ціни">
-        <path d={path} fill="none" stroke="#0057B8" strokeWidth={2} strokeLinejoin="round" />
+      <div className="mt-2 flex items-end gap-1.5">
+        {shown.map((point, index) => {
+          const last = index === shown.length - 1
+          const previous = index > 0 ? shown[index - 1].priceUsd : null
+          const down = previous !== null && point.priceUsd < previous
 
-        {points.map((point, index) => (
-          <circle
-            key={point.id}
-            cx={x(point)}
-            cy={y(point.priceUsd)}
-            r={4}
-            fill="#FFFFFF"
-            stroke="#0057B8"
-            strokeWidth={2}
-          >
-            <title>
-              {formatDate(point.seenAt)} — {formatUsd(point.priceUsd)}
-              {index === 0 ? ' (перше спостереження)' : ''}
-            </title>
-          </circle>
-        ))}
-
-        <text x={LEFT} y={TOP - 14} className="fill-[#16181A] font-mono text-[11px] font-semibold">
-          {formatUsd(first.priceUsd)}
-        </text>
-        <text
-          x={RIGHT}
-          y={TOP - 14}
-          textAnchor="end"
-          className="fill-[#16181A] font-mono text-[11px] font-semibold"
-        >
-          {formatUsd(last.priceUsd)}
-        </text>
-
-        <text x={LEFT} y={H - 6} className="fill-[#6B7075] font-mono text-[10px]">
-          {formatDate(first.seenAt)}
-        </text>
-        <text x={RIGHT} y={H - 6} textAnchor="end" className="fill-[#6B7075] font-mono text-[10px]">
-          {formatDate(last.seenAt)}
-        </text>
-      </svg>
+          return (
+            <div key={point.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <span
+                className={cn(
+                  'w-full rounded-t-[3px]',
+                  last ? 'bg-accent' : down ? 'bg-ok/40' : 'bg-edge',
+                )}
+                style={{ height: `${MIN_HEIGHT + ((point.priceUsd - min) / span) * 46}px` }}
+              />
+              <span
+                className={cn(
+                  't-num text-[11px] leading-none',
+                  last ? 'text-ink' : 'text-faint',
+                )}
+              >
+                {formatNumber(point.priceUsd)}
+              </span>
+              <span className="t-num text-[10px] leading-none text-faint">
+                {formatDate(point.seenAt).slice(0, 5)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </figure>
   )
 }

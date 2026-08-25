@@ -7,7 +7,7 @@ import { userNames } from '@/lib/users'
 
 import { LoginForm } from './LoginForm'
 
-export const metadata = { title: 'Вхід — Car Hunt' }
+export const metadata = { title: 'Вхід' }
 
 export default async function LoginPage({
   searchParams,
@@ -21,13 +21,13 @@ export default async function LoginPage({
     <main className="mx-auto flex min-h-dvh w-full max-w-[420px] flex-col justify-center px-4 py-10">
       <div className="mb-8">
         <PlateStrip label="CAR HUNT" size="lg" />
-        <p className="mt-3 text-[13px] text-muted">Трекер пошуку авто. Нас тут двоє.</p>
+        <p className="t-body mt-3 text-muted">Трекер пошуку авто. Нас тут двоє.</p>
       </div>
 
       {block.blocked ? (
-        <p className="border-l-[3px] border-signal bg-card p-3 text-[14px]">
+        <p className="t-body surface rib border-l-danger p-3">
           Забагато спроб входу. Спробуй за{' '}
-          <span className="font-mono tabular-nums">{Math.ceil(block.retryAfterSeconds / 60)}</span> хв.
+          <span className="t-num">{Math.ceil(block.retryAfterSeconds / 60)}</span> хв.
         </p>
       ) : (
         <LoginForm names={userNames()} next={next} />

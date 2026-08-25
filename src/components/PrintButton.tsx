@@ -6,7 +6,7 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="h-9 rounded-card border border-ink px-3 text-[11px] font-semibold uppercase tracking-[0.08em]"
+      className="btn tap px-3"
     >
       Друк / PDF
     </button>

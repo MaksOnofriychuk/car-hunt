@@ -13,12 +13,12 @@ export function SellerNotes({ sellerId, notes }: { sellerId: string; notes: stri
   const [state, formAction, pending] = useActionState(saveSellerNotes, IDLE)
 
   return (
-    <form action={formAction} className="rounded-card border border-line bg-card p-3">
+    <form action={formAction} className="surface p-3">
       <input type="hidden" name="id" value={sellerId} />
 
       <label
         htmlFor="seller-notes"
-        className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted"
+        className="t-micro text-faint"
       >
         Нотатки
       </label>
@@ -29,19 +29,19 @@ export function SellerNotes({ sellerId, notes }: { sellerId: string; notes: stri
         rows={3}
         defaultValue={notes}
         placeholder="Торгується, але тримає слово. Дзвонити після 18:00."
-        className="mt-1 w-full rounded-card border border-line bg-card px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
+        className="field mt-1"
       />
 
       <div className="mt-2 flex items-center gap-2">
         <button
           type="submit"
           disabled={pending}
-          className="h-9 rounded-card border border-ink px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+          className="btn tap px-3"
         >
           {pending ? 'Пишу…' : 'Зберегти'}
         </button>
-        {state.error ? <span className="text-[12px] font-semibold">{state.error}</span> : null}
-        {state.ok ? <span className="text-[12px] text-muted">Записано</span> : null}
+        {state.error ? <span className="t-body text-danger">{state.error}</span> : null}
+        {state.ok ? <span className="t-body text-faint">Записано</span> : null}
       </div>
     </form>
   )
