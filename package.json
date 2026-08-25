@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "reparse": "tsx scripts/reparse.ts",
-    "shot": "tsx scripts/shot.ts"
+    "shot": "tsx scripts/shot.ts",
+    "tg:check": "tsx scripts/telegram-check.ts",
+    "parse": "tsx scripts/parse-one.ts"
   },
   "dependencies": {
     "@tanstack/react-table": "^9.1.2",

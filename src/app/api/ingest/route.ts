@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { getAuthor } from '@/lib/auth'
 import { ingestUrl, parseListing } from '@/lib/ingest'
+import { notifyNewListing } from '@/lib/telegram/notify'
 
 export const runtime = 'nodejs'
 
@@ -32,8 +33,12 @@ export async function POST(request: Request) {
     results.push({ ...result, url })
 
     // Відповідь не чекає на парсинг: картка вже є, далі вона наповнюється у фоні.
+    // Сповіщення йде після парсингу — інакше в ньому не було б ні назви, ні ціни.
     if (!result.duplicate && result.recognized) {
-      after(() => parseListing(result.id))
+      after(async () => {
+        await parseListing(result.id)
+        await notifyNewListing(result.id, author)
+      })
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
@@ -23,6 +24,7 @@ import { listings, SELLER_TYPES, STAGES, type SellerType } from '@/db/schema'
 import { addSellerPhone, saveManualSeller } from '@/db/sellers'
 import { getSettings } from '@/db/settings'
 import { manualRef } from '@/lib/sources'
+import { notifyCall, notifyComment, notifyNewListing, notifyStage } from '@/lib/telegram/notify'
 import { storage } from '@/lib/storage'
 import { requireAuthor } from '@/lib/auth'
 import { kyivDatePlus } from '@/lib/dates'
@@ -94,6 +96,16 @@ export async function logCall(_prev: FormState, formData: FormData): Promise<For
   })
   refresh(listingId)
 
+  // Telegram — після відповіді: людина вже бачить запис у стрічці, а сповіщення
+  // хай собі йде у фоні. Мережа Telegram не має тримати форму.
+  after(() =>
+    notifyCall(listingId, author, {
+      outcome,
+      text: text ?? null,
+      offeredPrice: offeredPrice ?? null,
+    }),
+  )
+
   return { error: null, ok: true }
 }
 
@@ -116,6 +128,7 @@ export async function logComment(_prev: FormState, formData: FormData): Promise<
 
   await recordComment(listingId, author, text)
   refresh(listingId)
+  after(() => notifyComment(listingId, author, text))
 
   return { error: null, ok: true }
 }
@@ -139,6 +152,7 @@ export async function setStage(_prev: FormState, formData: FormData): Promise<Fo
 
   await changeStage(listingId, author, stage)
   refresh(listingId)
+  after(() => notifyStage(listingId, author, stage))
 
   return { error: null, ok: true }
 }
@@ -414,6 +428,10 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
 
   const [created] = await db.select().from(listings).where(eq(listings.id, id)).limit(1)
   if (created) await saveManualSeller(created, form.data.seller)
+
+  // Заведене руками — теж нове авто: іншому воно так само цікаве. Реєструємо
+  // до `redirect()`, бо той кидає виняток і рядки після нього не виконаються.
+  after(() => notifyNewListing(id, author))
 
   revalidatePath('/')
   redirect(`/listing/${id}`)

@@ -5,6 +5,16 @@ export function todayInKyiv(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: KYIV }).format(new Date())
 }
 
+/** Котра зараз у Києві, у форматі HH:MM — у такому ж лежать тихі години. */
+export function timeInKyiv(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('uk-UA', {
+    timeZone: KYIV,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(now)
+}
+
 /** Дата через N днів від сьогодні, теж за Києвом. Для кнопок «+3 / +7 / +14 днів». */
 export function kyivDatePlus(days: number): string {
   const now = new Date()

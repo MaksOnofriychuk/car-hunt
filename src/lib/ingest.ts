@@ -9,6 +9,7 @@ import { bothPrices } from '@/lib/rates'
 import { canonicalizeRef } from '@/lib/sources/canonicalize'
 import { refForInput, sourceFor } from '@/lib/sources'
 import { QuotaExceededError } from '@/lib/sources/http'
+import { notifyPriceChange } from '@/lib/telegram/notify'
 import { ListingGoneError, SourceBlockedError, SourceNotReadyError } from '@/lib/sources/types'
 
 /** Версія розбору. Піднімати, коли парсер став діставати щось нове. */
@@ -123,6 +124,12 @@ export async function parseListing(listingId: string): Promise<void> {
           type: 'price_change',
           payload: { old_price: previousPrice, new_price: price },
         })
+
+        // Ціну змінив продавець, а не хтось із нас, — тому пишемо обом.
+        await notifyPriceChange(
+          { ...listing, priceUsd: price, priceUah: money.priceUah ?? listing.priceUah },
+          { oldPrice: previousPrice, newPrice: price },
+        )
       }
     }
 

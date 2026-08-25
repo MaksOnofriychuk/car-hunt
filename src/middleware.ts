@@ -74,6 +74,14 @@ export async function middleware(request: NextRequest) {
 
   if (isPublic(pathname)) return secured(NextResponse.next())
 
+  // Підписане посилання на файл: пропускаємо далі, підпис перевіряє сам роут
+  // (`/api/files/[...key]`). Тут перевіряти нічим — секрет і ключ живуть у
+  // Node-рантаймі роута, а middleware не має знати про сховище нічого.
+  // Без валідного підпису роут віддасть 401, тому дірки це не робить.
+  if (pathname.startsWith('/api/files/') && request.nextUrl.searchParams.has('sig')) {
+    return secured(NextResponse.next())
+  }
+
   if (!author) {
     const login = new URL('/login', request.url)
     if (pathname !== '/') login.searchParams.set('next', `${pathname}${request.nextUrl.search}`)
