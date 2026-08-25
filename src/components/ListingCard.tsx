@@ -98,7 +98,7 @@ export function ListingCard({
   const note = row.lastNote ?? row.lastEvent
   const pad = DENSITY_CLASSES[density].card
   const dim = state === 'removed'
-  const photo = displayPhotos(listing)[0] ?? null
+  const photo = displayPhotos(listing, postKeys(row))[0] ?? null
 
   return (
     <article
@@ -430,7 +430,7 @@ function CompactCard({
   const contact = contactShort(listing.nextContactAt, today)
   const days = daysOnSale(listing.publishedAt)
   const hasPrice = listing.priceUsd !== null || listing.priceUah !== null
-  const photo = displayPhotos(listing)[0] ?? null
+  const photo = displayPhotos(listing, postKeys(row))[0] ?? null
 
   return (
     // Меню — сусід посилання, а не його вміст: кнопка всередині <a> ламає і
@@ -494,6 +494,11 @@ function CompactCard({
 }
 
 /* --------------------------------- дрібне --------------------------------- */
+
+/** Фото з поста — запасний варіант для карток, у яких своїх фото немає. */
+function postKeys(row: ListingRow): string[] {
+  return row.postPhoto ? [row.postPhoto] : []
+}
 
 /** Домен замість назви, коли парсер не дійшов до неї. */
 function hostOf(url: string) {

@@ -108,7 +108,7 @@ export default async function QueuePage({
 
   const tableRows: TableRow[] = page.rows.map((row) => ({
     row,
-    photo: displayPhotos(row.listing)[0] ?? null,
+    photo: displayPhotos(row.listing, row.postPhoto ? [row.postPhoto] : [])[0] ?? null,
   }))
 
   const card = (row: ListingRow, variant: 'full' | 'compact' = 'full') => (

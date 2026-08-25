@@ -12,6 +12,7 @@ import { DaysBadge } from '@/components/DaysBadge'
 import { PriceChart } from '@/components/PriceChart'
 import { SellerPhones } from '@/components/SellerPhones'
 import { Specs } from '@/components/Specs'
+import { TelegramPosts } from '@/components/TelegramPosts'
 import { getListingDetail } from '@/db/queries'
 import { getSettings } from '@/db/settings'
 import { requireSession } from '@/lib/auth'
@@ -52,10 +53,10 @@ export default async function ListingPage({
 
   const backHref = from ? `/?${from}` : '/'
 
-  const { listing, seller, sameAs, stage, events, prices } = detail
+  const { listing, seller, sameAs, stage, events, prices, posts } = detail
   const hint = sellerHint(listing.snapshotRaw)
   const names = userNames()
-  const photos = displayPhotos(listing)
+  const photos = displayPhotos(listing, posts.flatMap((post) => post.photosLocal))
   const specs = listingSpecs(listing.snapshotRaw)
   const contact = contactLabel(listing.nextContactAt, todayInKyiv())
   const days = daysOnSale(listing.publishedAt)
@@ -127,6 +128,19 @@ export default async function ListingPage({
           </div>
 
           <dl className="shrink-0 text-right">
+            {listing.priceFromPost ? (
+              <div className="mb-2">
+                <dt className="t-micro text-faint">З поста</dt>
+                <dd className="t-num text-[17px] text-accent-lit">
+                  {formatNumber(listing.priceFromPost)}
+                </dd>
+                {listing.priceUsd && listing.priceFromPost < listing.priceUsd ? (
+                  <dd className="t-micro text-ok">
+                    −{formatNumber(listing.priceUsd - listing.priceFromPost)} до оголошення
+                  </dd>
+                ) : null}
+              </div>
+            ) : null}
             {offered ? (
               <div className="mb-2">
                 <dt className="t-micro text-faint">Віддає</dt>
@@ -248,6 +262,8 @@ export default async function ListingPage({
           </Link>
         </div>
       </section>
+
+      <TelegramPosts posts={posts} currency={settings.currency} />
 
       <section className="surface p-3">
         <h2 className="t-micro text-faint">{feedTitle(events)}</h2>

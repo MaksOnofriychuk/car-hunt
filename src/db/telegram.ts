@@ -209,24 +209,31 @@ export async function insertPost(values: NewTelegramPost): Promise<TelegramPost 
   return row ?? null
 }
 
-/** Ключі фото цього поста. Дублі не додаються — ключ рахується з file_unique_id. */
+/**
+ * Дописати ключі фото. Порядок зберігається (галерея показує їх як у пості), а
+ * дублі не додаються: те саме фото приїжджає знову, коли пост передрукували.
+ */
 export async function appendPostPhotos(
   postId: string,
   keys: string[],
   complete: boolean,
 ): Promise<void> {
-  if (keys.length === 0 && !complete) return
+  const set: Record<string, unknown> = { archivedAt: complete ? new Date() : null }
 
-  await db
-    .update(telegramPosts)
-    .set({
-      photosLocal: sql`(
-        select array_agg(distinct key)
-        from unnest(${telegramPosts.photosLocal} || ${keys}::text[]) as key
-      )`,
-      archivedAt: complete ? new Date() : null,
-    })
-    .where(eq(telegramPosts.id, postId))
+  if (keys.length > 0) {
+    const values = sql.join(
+      keys.map((key) => sql`${key}`),
+      sql`, `,
+    )
+
+    set.photosLocal = sql`${telegramPosts.photosLocal} || (
+      select coalesce(array_agg(key order by ord), '{}')
+      from unnest(array[${values}]::text[]) with ordinality as t(key, ord)
+      where not (key = any(${telegramPosts.photosLocal}))
+    )`
+  }
+
+  await db.update(telegramPosts).set(set).where(eq(telegramPosts.id, postId))
 }
 
 /** Попередній пост про це саме авто — з ним порівнюємо ціну. */

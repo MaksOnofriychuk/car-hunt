@@ -108,7 +108,7 @@ export async function processPost(post: BuiltPost): Promise<PostResult> {
     return { kind: 'duplicate', listingId: target.listingId, title: target.listing.title }
   }
 
-  await applyToListing(target.listing, parsed, post)
+  await applyToListing(target.listing, parsed, post, money)
 
   // Ціна з поста і подія про її зміну — тільки між двома постами.
   if (money.priceUsd !== null) {
@@ -282,8 +282,10 @@ async function applyToListing(
   listing: Listing,
   parsed: ParsedPost,
   post: BuiltPost,
+  money: { priceUsd: number | null; priceUah: number | null },
 ): Promise<void> {
-  const earliest = listing.source === 'telegram' ? await earliestPostedAt(listing.id) : null
+  const fromPost = listing.source === 'telegram'
+  const earliest = fromPost ? await earliestPostedAt(listing.id) : null
 
   await fillEmptyColumns(
     listing,
@@ -300,8 +302,14 @@ async function applyToListing(
       vin: parsed.vin,
       // Опис пишемо тільки telegram-картці: у злитої він прийде з оголошення,
       // а непорожній description_text заблокував би архіватор.
-      descriptionText: listing.source === 'telegram' ? post.text : null,
-      publishedAt: earliest ?? (listing.source === 'telegram' ? post.postedAt : null),
+      descriptionText: fromPost ? post.text : null,
+      publishedAt: earliest ?? (fromPost ? post.postedAt : null),
+      // У telegram-картки ціни оголошення не існує — тому ціна з поста стає і
+      // ціною картки. Інакше вона висіла б у черзі без ціни, не потрапляла в
+      // фільтри й сортування. Історія цін постів усе одно лишається в
+      // telegram_posts, а в price_history вони не пишуться ніколи.
+      priceUsd: fromPost ? money.priceUsd : null,
+      priceUah: fromPost ? money.priceUah : null,
     },
     { vinIsFull: isFullVin(parsed.vin) },
   )

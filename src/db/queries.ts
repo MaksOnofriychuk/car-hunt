@@ -2,7 +2,8 @@ import { and, arrayOverlaps, asc, desc, eq, ne, sql } from 'drizzle-orm'
 
 import { db } from './index'
 import { events, listings, priceHistory, sellers } from './schema'
-import type { Event, Listing, PricePoint, Seller } from './schema'
+import type { Event, Listing, PricePoint, Seller, TelegramPost } from './schema'
+import { postsFor } from './telegram'
 import { getStages } from './stage'
 
 import { DEFAULT_STAGE, type Stage } from '@/lib/stages'
@@ -15,13 +16,15 @@ export type ListingDetail = {
   stage: Stage
   events: Event[]
   prices: PricePoint[]
+  /** Переслані пости про це авто — блок «З Telegram» на картці. */
+  posts: TelegramPost[]
 }
 
 export async function getListingDetail(id: string): Promise<ListingDetail | null> {
   const [listing] = await db.select().from(listings).where(eq(listings.id, id)).limit(1)
   if (!listing) return null
 
-  const [seller, feed, prices] = await Promise.all([
+  const [seller, feed, prices, posts] = await Promise.all([
     listing.sellerId
       ? db
           .select()
@@ -36,11 +39,20 @@ export async function getListingDetail(id: string): Promise<ListingDetail | null
       .from(priceHistory)
       .where(eq(priceHistory.listingId, id))
       .orderBy(asc(priceHistory.seenAt)),
+    postsFor(id),
   ])
 
   const [stages, sameAs] = await Promise.all([getStages([id]), sellersSharingPhones(seller)])
 
-  return { listing, seller, sameAs, stage: stages.get(id) ?? DEFAULT_STAGE, events: feed, prices }
+  return {
+    listing,
+    seller,
+    sameAs,
+    stage: stages.get(id) ?? DEFAULT_STAGE,
+    events: feed,
+    prices,
+    posts,
+  }
 }
 
 /**

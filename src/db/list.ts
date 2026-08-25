@@ -2,7 +2,7 @@ import { and, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
 
 import { db } from './index'
 import { listWhere, listOrderBy, listRange, type ListJoins } from './list-filters'
-import { events, listings, priceHistory, sellers } from './schema'
+import { events, listings, priceHistory, sellers, telegramPosts } from './schema'
 import type { Author, EventType, Listing, SellerType } from './schema'
 
 import { todayInKyiv } from '@/lib/dates'
@@ -68,6 +68,8 @@ export type ListingRow = {
   priceDrop: number | null
   /** За скільки днів вона впала — без цього число «−700» ні про що. */
   priceDropDays: number | null
+  /** Ключ фото з останнього поста — для telegram-карток єдине, що є. */
+  postPhoto: string | null
 }
 
 export type ListPage = {
@@ -167,7 +169,22 @@ function subqueries() {
       .groupBy(priceHistory.listingId),
   )
 
-  return { stageOf, lastEvent, lastNote, priceDrop }
+  /**
+   * Перше фото з найсвіжішого поста. Для telegram-картки це єдине фото, яке в
+   * неї є: у `photos` віддалених адрес немає, а копії постів живуть окремо.
+   */
+  const postPhoto = db.$with('post_photo').as(
+    db
+      .selectDistinctOn([telegramPosts.listingId], {
+        listingId: telegramPosts.listingId,
+        key: sql<string | null>`${telegramPosts.photosLocal}[1]`.as('post_photo_key'),
+      })
+      .from(telegramPosts)
+      .where(sql`array_length(${telegramPosts.photosLocal}, 1) > 0`)
+      .orderBy(telegramPosts.listingId, desc(telegramPosts.postedAt)),
+  )
+
+  return { stageOf, lastEvent, lastNote, priceDrop, postPhoto }
 }
 
 export async function getListings(
@@ -179,7 +196,7 @@ export async function getListings(
     archivedOnly?: boolean
   },
 ): Promise<ListPage> {
-  const { stageOf, lastEvent, lastNote, priceDrop } = subqueries()
+  const { stageOf, lastEvent, lastNote, priceDrop, postPhoto } = subqueries()
 
   const joins: ListJoins = {
     stage: sql`${stageOf.stage}`,
@@ -195,7 +212,7 @@ export async function getListings(
   const { limit, offset } = listRange(query, MAX_PER_PAGE)
 
   const rowsQuery = db
-    .with(stageOf, lastEvent, lastNote, priceDrop)
+    .with(stageOf, lastEvent, lastNote, priceDrop, postPhoto)
     .select({
       listing: summaryColumns,
       stage: stageOf.stage,
@@ -213,6 +230,7 @@ export async function getListings(
       noteAt: lastNote.createdAt,
       drop: priceDrop.drop,
       dropDays: priceDrop.dropDays,
+      postPhoto: postPhoto.key,
     })
     .from(listings)
     .leftJoin(sellers, eq(sellers.id, listings.sellerId))
@@ -220,6 +238,7 @@ export async function getListings(
     .leftJoin(lastEvent, eq(lastEvent.listingId, listings.id))
     .leftJoin(lastNote, eq(lastNote.listingId, listings.id))
     .leftJoin(priceDrop, eq(priceDrop.listingId, listings.id))
+    .leftJoin(postPhoto, eq(postPhoto.listingId, listings.id))
     .where(where)
     .orderBy(...listOrderBy(query, joins))
     .limit(limit)
@@ -255,6 +274,7 @@ export async function getListings(
         : null,
       priceDrop: row.drop ?? null,
       priceDropDays: row.dropDays ?? null,
+      postPhoto: row.postPhoto ?? null,
     })),
     total: totals[0]?.total ?? 0,
   }

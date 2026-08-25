@@ -14,6 +14,13 @@ import { storage } from '@/lib/storage'
  */
 export function displayPhotos(
   listing: Pick<Listing, 'photos' | 'photosLocal' | 'photosManual'>,
+  /**
+   * Ключі фото з постів. Вони живуть окремо від картки (`telegram_posts`) — і
+   * саме тому передаються сюди аргументом: у `listings.photos_local` їх класти
+   * не можна, звідти їх знищив би перерозбір або прибирання фото завершених
+   * авто. Для telegram-картки це єдині фото, які взагалі є.
+   */
+  postKeys: string[] = [],
 ): string[] {
   const files = storage()
   const local = listing.photosLocal.map((key) => files.url(key))
@@ -22,5 +29,6 @@ export function displayPhotos(
   const archived = local.length > 0 && listing.photosLocal.length >= listing.photos.length
   const base = archived || listing.photos.length === 0 ? local : listing.photos
 
-  return [...base, ...manual]
+  const own = [...base, ...manual]
+  return own.length > 0 ? own : postKeys.map((key) => files.url(key))
 }

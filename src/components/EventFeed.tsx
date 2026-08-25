@@ -86,6 +86,7 @@ function EventBody({ event }: { event: Event }) {
     new_price: newPrice,
     stage,
     fields,
+    source,
   } = event.payload ?? {}
 
   if (event.type === 'stage_change') {
@@ -100,8 +101,14 @@ function EventBody({ event }: { event: Event }) {
         <span className={cn('font-semibold', down ? 'text-ok' : 'text-warn')}>
           {formatUsd(newPrice)}
         </span>
+        {/* Ціна між двома постами — не те саме, що ціна в оголошенні. */}
+        {source === 'post' ? <span className="t-micro ml-1.5 text-faint">з поста</span> : null}
       </p>
     )
+  }
+
+  if (event.type === 'telegram_post') {
+    return <p className="t-body text-muted">Пост із групи — текст і фото нижче, у блоці «З Telegram».</p>
   }
 
   if (event.type === 'edit') {

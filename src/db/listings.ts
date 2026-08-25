@@ -215,7 +215,19 @@ export type PostColumns = Partial<{
   descriptionText: string | null
   publishedAt: Date | null
   vin: string | null
+  priceUsd: number | null
+  priceUah: number | null
 }>
+
+/**
+ * Значення для сирого SQL-фрагмента. Дату доводиться віддавати рядком із
+ * приведенням: усередині `sql` немає колонки, за якою драйвер зрозумів би тип,
+ * і об'єкт Date він просто не вміє відправити.
+ */
+function bind(value: unknown): SQL {
+  if (value instanceof Date) return sql`${value.toISOString()}::timestamptz`
+  return sql`${value}`
+}
 
 export async function fillEmptyColumns(
   listing: Pick<Listing, 'id' | 'manualFields' | 'source'>,
@@ -231,7 +243,7 @@ export async function fillEmptyColumns(
     if (key === 'vin') continue
 
     const column = listings[key as keyof typeof listings] as PgColumn
-    set[key] = sql`coalesce(${column}, ${value})`
+    set[key] = sql`coalesce(${column}, ${bind(value)})`
   }
 
   const vin = allowed.vin
@@ -250,7 +262,8 @@ export async function fillEmptyColumns(
 
   // `published_at` для telegram-картки — найраніший пост, а не останній.
   if (values.publishedAt) {
-    set.publishedAt = sql`least(coalesce(${listings.publishedAt}, ${values.publishedAt}), ${values.publishedAt})`
+    const at = bind(values.publishedAt)
+    set.publishedAt = sql`least(coalesce(${listings.publishedAt}, ${at}), ${at})`
   }
 
   if (Object.keys(set).length === 0) return
