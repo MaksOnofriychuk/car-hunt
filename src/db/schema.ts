@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm'
 import {
+  bigint,
   boolean,
   date,
   index,
@@ -7,6 +8,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -42,6 +44,8 @@ export const EVENT_TYPES = [
   'viewing',
   'price_change',
   'edit',
+  /** Прилетів переслений пост із Telegram-групи про це авто. */
+  'telegram_post',
 ] as const
 export type EventType = (typeof EVENT_TYPES)[number]
 
@@ -74,6 +78,15 @@ export type EventPayload = {
   new_price?: number
   /** Які саме поля виправили руками — для події `edit`. */
   fields?: string[]
+  /** Який саме пост — для `telegram_post` і для змін ціни, що прийшли з поста. */
+  post_id?: string
+  /**
+   * Звідки прийшла зміна ціни. `listing` — з оголошення (типово, старі події
+   * поля не мають), `post` — між двома постами. Розділені навмисно: 9500 у
+   * пості проти 9799 в оголошенні — це знижка, а не падіння ціни, і черга
+   * показала б фальшиве «↓».
+   */
+  source?: 'listing' | 'post'
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,6 +108,12 @@ export const sellers = pgTable(
     name: text('name'),
     /** Нормалізовані до +380XXXXXXXXX. Додатковий ключ склейки. */
     phones: text('phones').array().notNull().default([]),
+    /**
+     * Контакт із поста (@nickname). Довідкове поле, **не ключ склейки**:
+     * юзернейм міняють, а в злитій autoria-картці продавець уже має свій
+     * `source_user_id` із майданчика.
+     */
+    telegramUsername: text('telegram_username'),
     type: text('type').$type<SellerType>().notNull().default('unknown'),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -151,6 +170,12 @@ export const listings = pgTable(
     plateNumber: text('plate_number'),
     /** Ціна в гривні на момент парсингу. Історію ведемо тільки в доларах. */
     priceUah: integer('price_uah'),
+    /**
+     * Реальна ціна з останнього поста в Telegram — та, за яку продавець
+     * насправді готовий віддати. Історія цін по постах живе в `telegram_posts`;
+     * тут лежить остання, щоб картка показувала обидві ціни поруч.
+     */
+    priceFromPost: integer('price_from_post'),
     /** Коли оголошення зʼявилось на AUTO.RIA — з цього рахуємо «днів у продажу». */
     publishedAt: timestamp('published_at', { withTimezone: true }),
     /** Оригінальні URL з RIA — тільки для довідки, вони помруть разом з оголошенням. */
@@ -347,6 +372,118 @@ export const priceHistory = pgTable(
   (t) => [index('price_history_listing_id_seen_at_idx').on(t.listingId, t.seenAt)],
 )
 
+
+/* -------------------------------------------------------------------------- */
+/*  Telegram                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Переслані пости з груп. Append-only: одне авто — багато постів, і саме на цій
+ * історії тримається головний аргумент у розмові («місяць тому ви просили 9500»).
+ *
+ * Живуть окремо від картки навмисно: парсер згодом перезапише колонки, а пост
+ * лишиться як є — разом із телефоном і реальною ціною, яких на сторінці
+ * оголошення немає взагалі.
+ */
+export const telegramPosts = pgTable(
+  'telegram_posts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    /** Числовий id групи ПОХОДЖЕННЯ, не нашого чату з ботом. */
+    chatId: text('chat_id').notNull(),
+    /** Якір альбому — найменший message_id групи. */
+    messageId: integer('message_id').notNull(),
+    /** Усі повідомлення альбому: Telegram шле його кількома апдейтами. */
+    originMessageIds: integer('origin_message_ids').array().notNull().default([]),
+    /** Назва групи — її видно в стрічці постів на картці. */
+    originTitle: text('origin_title'),
+    mediaGroupId: text('media_group_id'),
+    /** Коли пересилач сховав джерело — ловить той самий пост за текстом. */
+    textHash: text('text_hash'),
+    forwardedBy: text('forwarded_by').$type<Author>().notNull(),
+    /** Дата ОРИГІНАЛЬНОГО поста, не пересилання. */
+    postedAt: timestamp('posted_at', { withTimezone: true }),
+    text: text('text'),
+    /** Що ми з нього дістали евристиками — разом із ненадійним. */
+    parsed: jsonb('parsed'),
+    /** Сирий апдейт: для telegram це замість html_raw. */
+    raw: jsonb('raw'),
+    priceUsd: integer('price_usd'),
+    priceUah: integer('price_uah'),
+    /** У чому продавець назвав ціну. */
+    priceCurrency: text('price_currency'),
+    /** Усі посилання з поста; картку створює лише перше на відоме джерело. */
+    links: text('links').array().notNull().default([]),
+    /** Ключі наших копій; рахуються з file_unique_id, а не з посилання. */
+    photosLocal: text('photos_local').array().notNull().default([]),
+    /** Усі фото цього поста в сховищі. Для telegram це і є повнота архіву. */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Той самий пост, переслений двічі, — це один рядок.
+    uniqueIndex('telegram_posts_chat_message_idx').on(t.chatId, t.messageId),
+    index('telegram_posts_listing_id_posted_at_idx').on(t.listingId, t.postedAt),
+    // Жорсткий бекстоп проти двох обробників одного альбому: другий спіткнеться
+    // об унікальність і піде доклеювати фото до наявного поста.
+    uniqueIndex('telegram_posts_media_group_idx')
+      .on(t.chatId, t.mediaGroupId)
+      .where(sql`media_group_id is not null`),
+    index('telegram_posts_text_hash_idx').on(t.textHash),
+  ],
+)
+
+/**
+ * Стейджинг апдейтів. Альбом приїжджає кількома окремими апдейтами з одним
+ * `media_group_id`, а підпис лежить, як правило, у першому — обробити кожен
+ * окремо означало б створити картку без фото і чотири сироти поруч.
+ *
+ * На Vercel процес не живе між запитами, тому буфер саме в базі.
+ * `update_id` первинним ключем — це ще й дедуп: Telegram ретраїть апдейт,
+ * якщо не отримав 200 вчасно.
+ */
+export const telegramInbox = pgTable(
+  'telegram_inbox',
+  {
+    updateId: bigint('update_id', { mode: 'number' }).primaryKey(),
+    chatId: text('chat_id').notNull(),
+    messageId: integer('message_id').notNull(),
+    mediaGroupId: text('media_group_id'),
+    payload: jsonb('payload').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Атомарний claim: обробник групи рівно один, скільки б апдейтів не прийшло. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('telegram_inbox_media_group_idx').on(t.mediaGroupId, t.receivedAt),
+    // Черга «застряглих»: інстанс міг померти між claim і обробкою.
+    index('telegram_inbox_unprocessed_idx')
+      .on(t.claimedAt)
+      .where(sql`processed_at is null`),
+  ],
+)
+
+/**
+ * Наші вихідні повідомлення про конкретне авто. Потрібне рівно для одного:
+ * відповідь реплаєм на сповіщення має ставати коментарем до того самого авто.
+ */
+export const tgMessages = pgTable(
+  'tg_messages',
+  {
+    chatId: text('chat_id').notNull(),
+    messageId: integer('message_id').notNull(),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.chatId, t.messageId] })],
+)
+
 /* -------------------------------------------------------------------------- */
 /*  Звʼязки (для db.query.* із `with`)                                         */
 /* -------------------------------------------------------------------------- */
@@ -359,6 +496,11 @@ export const listingsRelations = relations(listings, ({ one, many }) => ({
   seller: one(sellers, { fields: [listings.sellerId], references: [sellers.id] }),
   events: many(events),
   priceHistory: many(priceHistory),
+  telegramPosts: many(telegramPosts),
+}))
+
+export const telegramPostsRelations = relations(telegramPosts, ({ one }) => ({
+  listing: one(listings, { fields: [telegramPosts.listingId], references: [listings.id] }),
 }))
 
 export const eventsRelations = relations(events, ({ one }) => ({
@@ -387,3 +529,6 @@ export type NewPricePoint = typeof priceHistory.$inferInsert
 export type SourceRequest = typeof sourceRequests.$inferSelect
 export type LoginAttempt = typeof loginAttempts.$inferSelect
 export type NewLoginAttempt = typeof loginAttempts.$inferInsert
+export type TelegramPost = typeof telegramPosts.$inferSelect
+export type NewTelegramPost = typeof telegramPosts.$inferInsert
+export type TelegramInboxRow = typeof telegramInbox.$inferSelect

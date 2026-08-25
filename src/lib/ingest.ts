@@ -66,6 +66,16 @@ export async function parseListing(listingId: string): Promise<void> {
   const source = sourceFor(listing.source)
   if (!source) return
 
+  // Telegram і manual оновлювати нізвідки: у telegramSource.fetch() стоїть
+  // SourceNotReadyError, і без цієї перевірки картка навічно лишалась би
+  // `pending` — а це вічний поллінг на головній і марний прогін крону щогодини.
+  if (!source.refreshable) {
+    if (listing.status === 'pending') {
+      await db.update(listings).set({ status: 'active' }).where(eq(listings.id, listing.id))
+    }
+    return
+  }
+
   try {
     const snapshot = await source.fetch(listing.url, {
       source: listing.source,
@@ -88,24 +98,29 @@ export async function parseListing(listingId: string): Promise<void> {
       .set(
         dropManual(listing, {
           status: 'active',
-          title: snapshot.title ?? listing.title,
-          brand: snapshot.brand ?? listing.brand,
-          model: snapshot.model ?? listing.model,
-          year: snapshot.year ?? listing.year,
-          mileageKm: snapshot.mileageKm ?? listing.mileageKm,
-          priceUsd: price ?? listing.priceUsd,
-          city: snapshot.city ?? listing.city,
-          vin: snapshot.vin ?? listing.vin,
-          fuelType: snapshot.fuelType ?? listing.fuelType,
-          transmission: snapshot.transmission ?? listing.transmission,
-          color: snapshot.color ?? listing.color,
-          engineVolume: snapshot.engineVolume ?? listing.engineVolume,
-          driveType: snapshot.driveType ?? listing.driveType,
-          bodyType: snapshot.bodyType ?? listing.bodyType,
-          plateNumber: snapshot.plateNumber ?? listing.plateNumber,
-          priceUah: money.priceUah ?? listing.priceUah,
-          publishedAt: snapshot.publishedAt ?? listing.publishedAt,
-          photos: snapshot.photos?.length ? snapshot.photos : listing.photos,
+          // Жодного `?? listing.x`: рядок прочитаний ДО мережевого запиту, який
+          // триває секунди, і за цей час у колонки міг щось дописати пост із
+          // Telegram. Повертати туди старе значення означало б затирати його
+          // чужою чернеткою. `undefined` drizzle просто не кладе в UPDATE —
+          // парсер чіпає рівно те, що сам знайшов.
+          title: snapshot.title ?? undefined,
+          brand: snapshot.brand ?? undefined,
+          model: snapshot.model ?? undefined,
+          year: snapshot.year ?? undefined,
+          mileageKm: snapshot.mileageKm ?? undefined,
+          priceUsd: price ?? undefined,
+          city: snapshot.city ?? undefined,
+          vin: snapshot.vin ?? undefined,
+          fuelType: snapshot.fuelType ?? undefined,
+          transmission: snapshot.transmission ?? undefined,
+          color: snapshot.color ?? undefined,
+          engineVolume: snapshot.engineVolume ?? undefined,
+          driveType: snapshot.driveType ?? undefined,
+          bodyType: snapshot.bodyType ?? undefined,
+          plateNumber: snapshot.plateNumber ?? undefined,
+          priceUah: money.priceUah ?? undefined,
+          publishedAt: snapshot.publishedAt ?? undefined,
+          photos: snapshot.photos?.length ? snapshot.photos : undefined,
           snapshotRaw: snapshot.raw,
           parsedAt: new Date(),
           parserVersion: PARSER_VERSION,
@@ -122,7 +137,10 @@ export async function parseListing(listingId: string): Promise<void> {
           listingId: listing.id,
           author: listing.createdBy,
           type: 'price_change',
-          payload: { old_price: previousPrice, new_price: price },
+          // `source: 'listing'` — щоб відрізнити від змін, які приходять між
+          // двома постами: 9500 у пості проти 9799 в оголошенні це знижка, а не
+          // падіння ціни, і в черзі воно не має рахуватись падінням.
+          payload: { old_price: previousPrice, new_price: price, source: 'listing' },
         })
 
         // Ціну змінив продавець, а не хтось із нас, — тому пишемо обом.

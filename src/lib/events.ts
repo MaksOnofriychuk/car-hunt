@@ -7,6 +7,7 @@ export const EVENT_LABELS: Record<EventType, string> = {
   viewing: 'Огляд',
   price_change: 'Зміна ціни',
   edit: 'Правка руками',
+  telegram_post: 'Пост із Telegram',
 }
 
 /** Людські назви полів картки — для події «правка руками». */

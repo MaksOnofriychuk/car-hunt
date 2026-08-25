@@ -4,6 +4,7 @@ import { hasBotToken, sendMessage, sendPhoto } from './api'
 import {
   callMessage,
   commentMessage,
+  listingUrl,
   newListingMessage,
   priceMessage,
   stageMessage,
@@ -12,6 +13,7 @@ import {
 
 import { db } from '@/db'
 import { getSettings } from '@/db/settings'
+import { rememberBotMessage } from '@/db/tg-messages'
 import { listings, type Listing } from '@/db/schema'
 import { timeInKyiv } from '@/lib/dates'
 import type { Settings } from '@/lib/settings'
@@ -94,14 +96,26 @@ async function recipient(author: Author, kind: NotificationKind): Promise<Recipi
   return { author, chatId, settings }
 }
 
-/** Одна доставка. Фото — окремим повідомленням із підписом, якщо воно є. */
-async function deliver(to: Recipient, text: string, photoUrl: string | null): Promise<void> {
+/**
+ * Одна доставка. Фото — окремим повідомленням із підписом, якщо воно є.
+ *
+ * Кожне надіслане повідомлення запамʼятовується разом з авто: відповідь
+ * реплаєм на нього стане коментарем у стрічці саме цього авто.
+ */
+async function deliver(
+  to: Recipient,
+  listingId: string,
+  text: string,
+  photoUrl: string | null,
+): Promise<void> {
   const silent = isQuietNow(to.settings)
+  const button = { text: 'Відкрити картку', url: listingUrl(listingId) }
+
+  let sent: { message_id: number } | null = null
 
   if (photoUrl) {
     try {
-      await sendPhoto(to.chatId, photoUrl, text, { silent })
-      return
+      sent = await sendPhoto(to.chatId, photoUrl, text, { silent, button })
     } catch (error) {
       // Telegram не дістав картинку (локальний APP_URL, зниклий CDN) — це не
       // привід ковтати саме повідомлення.
@@ -109,7 +123,9 @@ async function deliver(to: Recipient, text: string, photoUrl: string | null): Pr
     }
   }
 
-  await sendMessage(to.chatId, text, { silent })
+  if (!sent) sent = await sendMessage(to.chatId, text, { silent, button })
+
+  await rememberBotMessage(to.chatId, sent.message_id, listingId)
 }
 
 /** Спільна обгортка: сповіщення не має права зламати дію, яка його породила. */
@@ -143,7 +159,7 @@ export async function notifyNewListing(listingId: string, actor: Author): Promis
     if (!listing) return
 
     const text = newListingMessage(listing, userNames()[actor], to.settings.currency)
-    await deliver(to, text, photoFor(listing))
+    await deliver(to, listing.id, text, photoFor(listing))
   })
 }
 
@@ -159,7 +175,7 @@ export async function notifyCall(
     const listing = await listingById(listingId)
     if (!listing) return
 
-    await deliver(to, callMessage(listing, userNames()[actor], to.settings.currency, call), null)
+    await deliver(to, listing.id, callMessage(listing, userNames()[actor], to.settings.currency, call), null)
   })
 }
 
@@ -175,7 +191,12 @@ export async function notifyComment(
     const listing = await listingById(listingId)
     if (!listing) return
 
-    await deliver(to, commentMessage(listing, userNames()[actor], to.settings.currency, text), null)
+    await deliver(
+      to,
+      listing.id,
+      commentMessage(listing, userNames()[actor], to.settings.currency, text),
+      null,
+    )
   })
 }
 
@@ -187,7 +208,12 @@ export async function notifyStage(listingId: string, actor: Author, stage: Stage
     const listing = await listingById(listingId)
     if (!listing) return
 
-    await deliver(to, stageMessage(listing, userNames()[actor], to.settings.currency, stage), null)
+    await deliver(
+      to,
+      listing.id,
+      stageMessage(listing, userNames()[actor], to.settings.currency, stage),
+      null,
+    )
   })
 }
 
@@ -204,7 +230,7 @@ export async function notifyPriceChange(
       const to = await recipient(author, 'price')
       if (!to) continue
 
-      await deliver(to, priceMessage(listing, to.settings.currency, change), null)
+      await deliver(to, listing.id, priceMessage(listing, to.settings.currency, change), null)
     }
   })
 }
