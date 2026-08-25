@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { EventFeed } from '@/components/EventFeed'
+import { ListingActions } from '@/components/ListingActions'
+import { ArchiveToggle, ContactDate, TargetPrice } from '@/components/ListingFields'
 import { PlateStrip } from '@/components/PlateStrip'
 import { PriceChart } from '@/components/PriceChart'
 import { SellerPhones } from '@/components/SellerPhones'
@@ -25,9 +27,6 @@ const SELLER_TYPES: Record<string, string> = {
   showroom: 'Автосалон',
   unknown: 'Невідомо',
 }
-
-/** Кнопки «коли дзвонити» зі SPEC: сьогодні / +3 / +7 / +14 днів. */
-const CONTACT_PRESETS = ['сьогодні', '+3 дні', '+7 днів', '+14 днів']
 
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -121,19 +120,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </a>
       </section>
 
-      {/* Два поля, які редагуються в один тап — SPEC, «Інтерфейс». Вмикаємо на кроці «Події». */}
+      {/* Два поля, які редагуються в один тап — SPEC, «Інтерфейс». */}
       <section className="rounded-card border border-line bg-white p-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
             Цільова ціна
           </span>
-          <button
-            type="button"
-            disabled
-            className="font-mono text-[16px] font-semibold tabular-nums text-ink underline decoration-line underline-offset-4 disabled:opacity-70"
-          >
-            {formatUsd(listing.targetPriceUsd)}
-          </button>
+          <TargetPrice listingId={listing.id} value={listing.targetPriceUsd} />
         </div>
 
         <div className="mt-3 border-t border-line pt-3">
@@ -145,18 +138,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               {contact.text}
             </span>
           </div>
-          <div className="mt-2 grid grid-cols-4 gap-1.5">
-            {CONTACT_PRESETS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                disabled
-                className="h-9 rounded-card border border-line text-[11px] font-semibold text-muted disabled:opacity-60"
-              >
-                {preset}
-              </button>
-            ))}
+          <div className="mt-2">
+            <ContactDate listingId={listing.id} hasDate={listing.nextContactAt !== null} />
           </div>
+        </div>
+
+        <div className="mt-3 border-t border-line pt-3">
+          <ArchiveToggle listingId={listing.id} archived={listing.archived} />
         </div>
       </section>
 
@@ -189,19 +177,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       </section>
 
       <section className="rounded-card border border-line bg-white p-3">
-        <div className="flex gap-1.5">
-          {['Дзвінок', 'Коментар', 'Змінити етап'].map((label) => (
-            <button
-              key={label}
-              type="button"
-              disabled
-              title="Зʼявиться на кроці «Події і робоча черга»"
-              className="h-10 flex-1 rounded-card border border-ink text-[11px] font-semibold uppercase tracking-[0.08em] text-ink disabled:opacity-50"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <ListingActions listingId={listing.id} stage={stage} />
 
         <h2 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
           Стрічка подій

@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { PlateStrip } from './PlateStrip'
+import { QuickActions } from './QuickActions'
 import { StageBadge } from './StageBadge'
 
 import type { QueueCard } from '@/db/queries'
@@ -102,33 +103,12 @@ export function ListingCard({ card, today, viewer, names }: Props) {
         </Link>
       )}
 
-      <footer className="flex items-center gap-2 border-t border-line px-3 py-2">
-        <QuickAction label="Дзвінок" />
-        <QuickAction label="Коментар" />
-        <span
-          className={cn(
-            'ml-auto shrink-0 text-[12px]',
-            contact.overdue ? 'font-semibold text-ink' : 'text-muted',
-          )}
-        >
-          {contact.text}
-        </span>
-      </footer>
+      <QuickActions
+        listingId={listing.id}
+        contactText={contact.text}
+        overdue={contact.overdue}
+      />
     </article>
-  )
-}
-
-/** Кнопки поки мовчать — вмикаються на кроці «події» з «Порядку робіт». */
-function QuickAction({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      title="Зʼявиться на кроці «Події і робоча черга»"
-      className="h-8 rounded-card border border-line px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted disabled:opacity-60"
-    >
-      {label}
-    </button>
   )
 }
 

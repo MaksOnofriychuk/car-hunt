@@ -17,6 +17,17 @@ export const CALL_OUTCOMES: Record<string, string> = {
   declined: 'відмовив',
 }
 
+/** Порядок кнопок у формі дзвінка — від найчастішого результату. */
+export const CALL_OUTCOME_ORDER = [
+  'reached',
+  'no_answer',
+  'busy',
+  'callback',
+  'declined',
+] as const
+
+export type CallOutcome = (typeof CALL_OUTCOME_ORDER)[number]
+
 export function callOutcome(outcome: string | undefined): string | null {
   if (!outcome) return null
   return CALL_OUTCOMES[outcome] ?? outcome
