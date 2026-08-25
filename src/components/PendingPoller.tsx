@@ -4,19 +4,49 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 /**
- * Поки на сторінці є хоч одна картка в статусі pending, оновлюємо серверний
- * рендер раз на 1.5 с (SPEC, «Інгест посилання»). Коли pending не лишилось,
- * компонент просто не рендериться і поллінг зупиняється сам.
+ * Поки картки дорозбираються, черга має оновитись сама.
+ *
+ * Раніше це був `router.refresh()` раз на півтори секунди — тобто повний
+ * серверний рендер сторінки з усіма запитами, незалежно від того, чи щось
+ * змінилось. Тепер опитуємо тільки самі картки (легкий роут на кілька полів) і
+ * перемальовуємо сторінку, коли якась із них справді розібралась.
  */
-export function PendingPoller({ pending }: { pending: number }) {
+
+const INTERVAL_MS = 2000
+
+export function PendingPoller({ ids }: { ids: string[] }) {
   const router = useRouter()
+  const key = ids.join(',')
 
   useEffect(() => {
-    if (pending === 0) return
+    const pending = key ? key.split(',') : []
+    if (pending.length === 0) return
 
-    const timer = setInterval(() => router.refresh(), 1500)
-    return () => clearInterval(timer)
-  }, [pending, router])
+    let stopped = false
+
+    const check = async () => {
+      for (const id of pending) {
+        try {
+          const response = await fetch(`/api/listings/${id}`, { cache: 'no-store' })
+          if (!response.ok) continue
+
+          const data: { status?: string } = await response.json()
+          if (data.status && data.status !== 'pending' && !stopped) {
+            router.refresh()
+            return
+          }
+        } catch {
+          // Мережа блимнула — спробуємо наступного разу.
+        }
+      }
+    }
+
+    const timer = setInterval(() => void check(), INTERVAL_MS)
+    return () => {
+      stopped = true
+      clearInterval(timer)
+    }
+  }, [key, router])
 
   return null
 }

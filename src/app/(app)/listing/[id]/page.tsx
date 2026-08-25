@@ -32,13 +32,23 @@ const SELLER_TYPES: Record<string, string> = {
   unknown: 'Невідомо',
 }
 
-export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ListingPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  /** `from` — фільтри списку, з якого сюди прийшли: щоб «← Черга» повертала туди ж. */
+  searchParams: Promise<{ from?: string }>
+}) {
   const { id } = await params
   if (!UUID.test(id)) notFound()
 
   const { author } = await requireSession()
+  const { from } = await searchParams
   const detail = await getListingDetail(id)
   if (!detail) notFound()
+
+  const backHref = from ? `/?${from}` : '/'
 
   const { listing, seller, sameAs, stage, events, prices } = detail
   const hint = sellerHint(listing.snapshotRaw)
@@ -49,7 +59,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-4">
-      <Link href="/" className="inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+      <Link
+        href={backHref}
+        className="inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+      >
         ← Черга
       </Link>
 

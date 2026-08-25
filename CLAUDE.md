@@ -50,6 +50,9 @@ drizzle/            # міграції   scripts/ — seed
   CloudFront ріже TLS-відбиток Node, а не наш User-Agent. Ціна в гривні —
   `price_usd` рахується за курсом НБУ з таблиці `exchange_rates`, а подія
   `price_change` порівнює ціну **у валюті оголошення**.
+- Стан списку авто (фільтри, сортування, сторінка) живе **в URL**, не в памʼяті:
+  `src/lib/list-query.ts` розбирає і збирає, `src/db/list.ts` — одна проєкція
+  рядка для всіх списків, `src/db/list-filters.ts` — той самий білдер SQL.
 - Руками виправлене парсер не затирає: `listings.manual_fields` — перелік колонок
   на рівні **поля**, через `dropManual()` проходить усе, що пише парсер. Фото,
   додані руками, живуть у `photos_manual` — `reparse` чистить лише `photos_local`.

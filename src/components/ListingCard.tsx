@@ -5,22 +5,27 @@ import { PlateStrip } from './PlateStrip'
 import { QuickActions } from './QuickActions'
 import { StageBadge } from './StageBadge'
 
-import type { QueueCard } from '@/db/queries'
-import type { Author, Listing } from '@/db/schema'
+import type { ListingRow, ListingSummary } from '@/db/list'
+import type { Author } from '@/db/schema'
 import { cn } from '@/lib/cn'
 import { daysOnSale, daysSince } from '@/lib/dates'
 import { contactLabel, formatKm, formatUsd, shortAgo } from '@/lib/format'
 import { displayPhotos } from '@/lib/photos'
 
 type Props = {
-  card: QueueCard
+  row: ListingRow
   today: string
   viewer: Author
   names: Record<Author, string>
+  /** Поточні фільтри — щоб з картки авто повернутись у той самий список. */
+  search: string
 }
 
-export function ListingCard({ card, today, viewer, names }: Props) {
-  const { listing, stage, lastEvent, lastNote, priceDrop } = card
+export function ListingCard({ row, today, viewer, names, search }: Props) {
+  const { listing, stage, lastEvent, lastNote, priceDrop } = row
+  const href = search
+    ? `/listing/${listing.id}?from=${encodeURIComponent(search)}`
+    : `/listing/${listing.id}`
   // Підпис «хто і коли» беремо з тієї ж події, що й цитата, — інакше вони розʼїжджаються.
   const meta = lastNote ?? lastEvent
   const contact = contactLabel(listing.nextContactAt, today)
@@ -39,7 +44,7 @@ export function ListingCard({ card, today, viewer, names }: Props) {
       ) : listing.status === 'failed' ? (
         <FailedBody listing={listing} />
       ) : (
-        <Link href={`/listing/${listing.id}`} className="block p-3">
+        <Link href={href} className="block p-3">
           <header className="flex gap-3">
             <Thumbnail listing={listing} />
             <div className="min-w-0 flex-1">
@@ -112,7 +117,7 @@ export function ListingCard({ card, today, viewer, names }: Props) {
   )
 }
 
-function Thumbnail({ listing }: { listing: Listing }) {
+function Thumbnail({ listing }: { listing: ListingSummary }) {
   const photo = displayPhotos(listing)[0]
 
   if (!photo) {
@@ -137,7 +142,7 @@ function Thumbnail({ listing }: { listing: Listing }) {
 }
 
 /** Щойно закинули посилання, парсер ще читає оголошення. */
-function PendingBody({ listing }: { listing: Listing }) {
+function PendingBody({ listing }: { listing: ListingSummary }) {
   return (
     <div className="p-3">
       <div className="flex gap-3">
@@ -155,7 +160,7 @@ function PendingBody({ listing }: { listing: Listing }) {
 }
 
 /** Парсер не впорався. Посилання не губиться ніколи — SPEC. */
-function FailedBody({ listing }: { listing: Listing }) {
+function FailedBody({ listing }: { listing: ListingSummary }) {
   return (
     <div className="p-3">
       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">

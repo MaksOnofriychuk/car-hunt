@@ -193,6 +193,13 @@ export const listings = pgTable(
   (t) => [
     uniqueIndex('listings_source_source_id_idx').on(t.source, t.sourceId),
     index('listings_next_contact_at_idx').on(t.nextContactAt),
+    // Головний запит черги: не архівні, за датою контакту.
+    index('listings_archived_next_contact_at_idx').on(t.archived, t.nextContactAt),
+    // Фільтри списку. На сотні рядків Postgres їх ще ігноруватиме, але саме ці
+    // три діапазони крутять руками найчастіше.
+    index('listings_price_usd_idx').on(t.priceUsd),
+    index('listings_year_idx').on(t.year),
+    index('listings_published_at_idx').on(t.publishedAt),
     index('listings_status_idx').on(t.status),
     // cron/refresh бере найдавніше оновлені неархівні авто
     index('listings_parsed_at_idx').on(t.parsedAt),
@@ -242,6 +249,24 @@ export const sourceRequests = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('source_requests_source_kind_created_at_idx').on(t.source, t.kind, t.createdAt)],
+)
+
+/**
+ * Збережені набори фільтрів. Три готові («Мої гарячі», «Довго висять»,
+ * «Дешевші за ціль») живуть константами в коді — це просто URL; сюди лягають
+ * лише ті, які завели руками.
+ */
+export const filterPresets = pgTable(
+  'filter_presets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    author: text('author').$type<Author>().notNull(),
+    name: text('name').notNull(),
+    /** Серіалізований запит списку: `price_max=10000&sort=days:desc`. */
+    query: text('query').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('filter_presets_created_at_idx').on(t.createdAt)],
 )
 
 /**
@@ -326,6 +351,7 @@ export type Listing = typeof listings.$inferSelect
 export type NewListing = typeof listings.$inferInsert
 export type Event = typeof events.$inferSelect
 export type ExchangeRate = typeof exchangeRates.$inferSelect
+export type FilterPreset = typeof filterPresets.$inferSelect
 export type NewEvent = typeof events.$inferInsert
 export type PricePoint = typeof priceHistory.$inferSelect
 export type NewPricePoint = typeof priceHistory.$inferInsert

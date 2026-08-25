@@ -78,6 +78,13 @@
       "when": 1787648945269,
       "tag": "0010_wooden_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787651319580,
+      "tag": "0011_nice_the_anarchist",
+      "breakpoints": true
     }
   ]
 }
