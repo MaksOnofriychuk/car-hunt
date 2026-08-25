@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 
 import { assertSafeKey, type FileStorage } from './types'
@@ -50,4 +50,36 @@ export const localStorage: FileStorage = {
     assertSafeKey(key)
     return `/api/files/${key.split('/').map(encodeURIComponent).join('/')}`
   },
+
+  async usage() {
+    return walk(ROOT)
+  },
+}
+
+/** Обхід теки сховища. Файлів тут тисячі, не мільйони, тому просто рахуємо. */
+async function walk(dir: string): Promise<{ files: number; bytes: number }> {
+  let files = 0
+  let bytes = 0
+
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return { files, bytes }
+  }
+
+  for (const entry of entries) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      const inner = await walk(path)
+      files += inner.files
+      bytes += inner.bytes
+    } else {
+      const info = await stat(path)
+      files += 1
+      bytes += info.size
+    }
+  }
+
+  return { files, bytes }
 }

@@ -17,25 +17,31 @@ export type Preset = {
   custom?: boolean
 }
 
-export const BUILT_IN_PRESETS: readonly Preset[] = [
-  {
-    key: 'hot',
-    name: 'Мої гарячі',
-    // Те, з чим уже почали розмову і про що треба нагадати цього тижня.
-    query: 'stage=contacted,offer_made,negotiating,viewing_scheduled&due=week',
-  },
-  {
-    key: 'standing',
-    name: 'Довго висять',
-    // 60 днів — та сама межа, після якої PlateStrip підсвічує число синім.
-    query: 'days_min=60&sort=days:desc',
-  },
-  {
-    key: 'cheaper',
-    name: 'Дешевші за ціль',
-    query: 'cheaper=1&sort=diff:asc',
-  },
-]
+/**
+ * Вбудовані три. «Довго висять» бере поріг із налаштувань — той самий, за яким
+ * підсвічується смуга на картці: два різні уявлення про «довго» в одному
+ * застосунку були б дивними.
+ */
+export function builtInPresets(longStandingDays: number): Preset[] {
+  return [
+    {
+      key: 'hot',
+      name: 'Мої гарячі',
+      // Те, з чим уже почали розмову і про що треба нагадати цього тижня.
+      query: 'stage=contacted,offer_made,negotiating,viewing_scheduled&due=week',
+    },
+    {
+      key: 'standing',
+      name: 'Довго висять',
+      query: `days_min=${longStandingDays}&sort=days:desc`,
+    },
+    {
+      key: 'cheaper',
+      name: 'Дешевші за ціль',
+      query: 'cheaper=1&sort=diff:asc',
+    },
+  ]
+}
 
 /** Чи це саме той пресет — щоб підсвітити активний чип. */
 export function isPresetActive(preset: Preset, search: string): boolean {

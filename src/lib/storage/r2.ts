@@ -123,6 +123,12 @@ export function createR2Storage(config: R2Config): FileStorage {
       }
     },
 
+    async usage() {
+      // Порахувати можна лише перебравши весь бакет — заради цифри на екрані
+      // це зайві запити й гроші.
+      return null
+    },
+
     url(key) {
       assertSafeKey(key)
       const encoded = key.split('/').map(encodeURIComponent).join('/')

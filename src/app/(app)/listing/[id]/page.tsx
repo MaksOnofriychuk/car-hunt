@@ -13,6 +13,7 @@ import { SellerPhones } from '@/components/SellerPhones'
 import { Specs } from '@/components/Specs'
 import { StageBadge } from '@/components/StageBadge'
 import { getListingDetail } from '@/db/queries'
+import { getSettings } from '@/db/settings'
 import { requireSession } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { daysOnSale, formatDate } from '@/lib/dates'
@@ -44,6 +45,7 @@ export default async function ListingPage({
   if (!UUID.test(id)) notFound()
 
   const { author } = await requireSession()
+  const settings = await getSettings(author)
   const { from } = await searchParams
   const detail = await getListingDetail(id)
   if (!detail) notFound()
@@ -68,7 +70,7 @@ export default async function ListingPage({
 
       <PhotoGallery photos={photos} title={listing.title ?? 'Авто'} />
 
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <h1 className="text-[19px] font-semibold leading-tight">
           {listing.title ?? 'Без назви'}{' '}
           {listing.year ? (
@@ -88,9 +90,11 @@ export default async function ListingPage({
               listing.status === 'removed' && 'text-muted line-through decoration-1',
             )}
           >
-            {formatUsd(listing.priceUsd)}
+            {settings.currency === 'uah' && listing.priceUah
+              ? formatUah(listing.priceUah)
+              : formatUsd(listing.priceUsd)}
           </span>
-          {listing.priceUah ? (
+          {listing.priceUah && settings.currency !== 'uah' ? (
             <span className="font-mono text-[13px] leading-none tabular-nums text-muted">
               {formatUah(listing.priceUah)}
             </span>
@@ -98,7 +102,11 @@ export default async function ListingPage({
           <StageBadge stage={stage} className="ml-auto" />
         </div>
 
-        <PlateStrip days={daysOnSale(listing.publishedAt)} className="mt-3" />
+        <PlateStrip
+          days={daysOnSale(listing.publishedAt)}
+          longStandingDays={settings.longStandingDays}
+          className="mt-3"
+        />
 
         {listing.status === 'removed' ? (
           <p className="mt-2 text-[12px] text-muted">
@@ -133,7 +141,7 @@ export default async function ListingPage({
       <Specs listing={listing} specs={specs} />
 
       {listing.descriptionText ? (
-        <section className="rounded-card border border-line bg-white p-3">
+        <section className="rounded-card border border-line bg-card p-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
             Опис від продавця
           </h2>
@@ -144,7 +152,7 @@ export default async function ListingPage({
       ) : null}
 
       {/* Два поля, які редагуються в один тап — SPEC, «Інтерфейс». */}
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
             Цільова ціна
@@ -172,13 +180,13 @@ export default async function ListingPage({
       </section>
 
       {prices.length > 1 ? (
-        <section className="rounded-card border border-line bg-white p-3">
+        <section className="rounded-card border border-line bg-card p-3">
           <PriceChart points={prices} />
         </section>
       ) : null}
 
       {/* Секція є завжди: номер вводиться руками, і без неї його нікуди вписати. */}
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
           Продавець
         </span>
@@ -219,7 +227,7 @@ export default async function ListingPage({
         {seller?.notes ? <p className="mt-2 text-[13px] leading-snug">{seller.notes}</p> : null}
       </section>
 
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <ListingActions listingId={listing.id} stage={stage} />
 
         <h2 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">

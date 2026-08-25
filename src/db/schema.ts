@@ -252,6 +252,34 @@ export const sourceRequests = pgTable(
 )
 
 /**
+ * Робочі налаштування і сповіщення — по рядку на користувача. Вигляд
+ * (тема, шрифт, розмір, щільність) сюди не потрапляє: він у cookie, бо в
+ * кожного свій пристрій і свої очі.
+ */
+export const userSettings = pgTable('user_settings', {
+  author: text('author').$type<Author>().primaryKey(),
+  /** Через скільки днів дзвонити після записаного дзвінка; 0 — не ставити дату. */
+  callFollowupDays: integer('call_followup_days').notNull().default(3),
+  /** Після скількох днів в оголошенні підсвічувати «довго висить». */
+  longStandingDays: integer('long_standing_days').notNull().default(60),
+  /** usd | uah | both */
+  currency: text('currency').notNull().default('usd'),
+  defaultSort: text('default_sort').notNull().default('contact'),
+  notifyNew: boolean('notify_new').notNull().default(true),
+  notifyComment: boolean('notify_comment').notNull().default(true),
+  notifyPrice: boolean('notify_price').notNull().default(true),
+  notifyStage: boolean('notify_stage').notNull().default(true),
+  /** HH:MM за Києвом. */
+  digestAt: text('digest_at').notNull().default('08:00'),
+  quietFrom: text('quiet_from').notNull().default('22:00'),
+  quietTo: text('quiet_to').notNull().default('08:00'),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+})
+
+/**
  * Збережені набори фільтрів. Три готові («Мої гарячі», «Довго висять»,
  * «Дешевші за ціль») живуть константами в коді — це просто URL; сюди лягають
  * лише ті, які завели руками.
@@ -352,6 +380,7 @@ export type NewListing = typeof listings.$inferInsert
 export type Event = typeof events.$inferSelect
 export type ExchangeRate = typeof exchangeRates.$inferSelect
 export type FilterPreset = typeof filterPresets.$inferSelect
+export type UserSettings = typeof userSettings.$inferSelect
 export type NewEvent = typeof events.$inferInsert
 export type PricePoint = typeof priceHistory.$inferSelect
 export type NewPricePoint = typeof priceHistory.$inferInsert

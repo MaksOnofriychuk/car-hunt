@@ -6,21 +6,29 @@ import { useActionState, useState } from 'react'
 import { deletePreset, savePreset } from '@/app/(app)/actions'
 import { cn } from '@/lib/cn'
 import { IDLE } from '@/lib/forms'
-import { BUILT_IN_PRESETS, isPresetActive, type Preset } from '@/lib/presets'
+import { isPresetActive, type Preset } from '@/lib/presets'
 
 /**
  * Набори фільтрів. Пресет — це просто збережений рядок запиту, тому клік по
  * ньому нічим не відрізняється від переходу за посиланням.
  */
-export function PresetBar({ presets, search }: { presets: Preset[]; search: string }) {
+export function PresetBar({
+  presets,
+  builtIn,
+  search,
+}: {
+  presets: Preset[]
+  builtIn: Preset[]
+  search: string
+}) {
   const [saving, setSaving] = useState(false)
   const [saveState, saveAction, savePending] = useActionState(savePreset, IDLE)
   const [, deleteAction] = useActionState(deletePreset, IDLE)
 
-  const all = [...BUILT_IN_PRESETS, ...presets]
+  const all = [...builtIn, ...presets]
 
   return (
-    <section className="rounded-card border border-line bg-white p-3">
+    <section className="rounded-card border border-line bg-card p-3">
       <div className="flex flex-wrap items-center gap-1.5">
         {all.map((preset) => {
           const active = isPresetActive(preset, search)
@@ -71,7 +79,7 @@ export function PresetBar({ presets, search }: { presets: Preset[]; search: stri
             autoFocus
             maxLength={40}
             placeholder="Назва набору"
-            className="h-9 min-w-0 flex-1 rounded-card border border-line bg-white px-2.5 text-[14px] placeholder:text-muted"
+            className="h-9 min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 text-[14px] placeholder:text-muted"
           />
           <button
             type="submit"

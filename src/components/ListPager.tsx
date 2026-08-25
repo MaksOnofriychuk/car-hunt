@@ -17,7 +17,7 @@ export function ListPager({ query, total }: { query: ListQuery; total: number })
   const to = per ? Math.min(query.page * per, total) : Math.min(total, MAX_PER_PAGE)
 
   return (
-    <nav className="flex items-center gap-2 rounded-card border border-line bg-white p-3">
+    <nav className="flex items-center gap-2 rounded-card border border-line bg-card p-3">
       <span className="font-mono text-[12px] tabular-nums text-muted">
         {from}–{to} з {total}
       </span>

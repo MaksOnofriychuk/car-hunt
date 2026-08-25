@@ -17,7 +17,9 @@ import type { ListingRow } from '@/db/list'
 import type { Author, SourceName } from '@/db/schema'
 import { cn } from '@/lib/cn'
 import { daysOnSale } from '@/lib/dates'
-import { contactLabel, formatKm, formatUsd } from '@/lib/format'
+import { contactLabel, formatKm, formatPrice, formatUsd } from '@/lib/format'
+import { DENSITY_CLASSES, type Density } from '@/lib/look'
+import type { Currency } from '@/lib/settings'
 import { listHref, toggleSort, type ListQuery, type SortField } from '@/lib/list-query'
 import {
   COLUMN_LABELS,
@@ -74,6 +76,9 @@ type Context = {
   search: string
   viewer: Author
   names: Record<Author, string>
+  currency: Currency
+  longStandingDays: number
+  density: Density
 }
 
 export function ListingTable({
@@ -103,7 +108,7 @@ export function ListingTable({
     <div className="space-y-2">
       <ColumnSettings prefs={prefs} />
 
-      <div className="overflow-x-auto rounded-card border border-line bg-white">
+      <div className="overflow-x-auto rounded-card border border-line bg-card">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             {table.getHeaderGroups().map((group) => (
@@ -131,7 +136,7 @@ export function ListingTable({
                 )}
               >
                 {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className="px-2 py-1.5 align-middle">
+                  <td key={cell.id} className={cn('px-2 align-middle', DENSITY_CLASSES[context.density].row)}>
                     <table.FlexRender cell={cell} />
                   </td>
                 ))}
@@ -147,7 +152,7 @@ export function ListingTable({
 /* -------------------------------- колонки ---------------------------------- */
 
 function buildColumns(context: Context) {
-  const { query, today, search, viewer, names } = context
+  const { query, today, search, viewer, names, currency, longStandingDays } = context
 
   const head = (id: ColumnId) => {
     const field = SORTABLE[id]
@@ -215,7 +220,7 @@ function buildColumns(context: Context) {
         const { listing, priceDrop } = row.original.row
         return (
           <span className="whitespace-nowrap font-mono tabular-nums">
-            {formatUsd(listing.priceUsd)}
+            {formatPrice(listing.priceUsd, listing.priceUah, currency)}
             {priceDrop ? <span className="ml-1 text-plate">↓{formatUsd(priceDrop)}</span> : null}
           </span>
         )
@@ -256,7 +261,12 @@ function buildColumns(context: Context) {
       cell: ({ row }) => {
         const days = daysOnSale(row.original.row.listing.publishedAt)
         return (
-          <span className={cn('font-mono tabular-nums', days !== null && days > 60 && 'text-plate')}>
+          <span
+            className={cn(
+              'font-mono tabular-nums',
+              days !== null && days > longStandingDays && 'text-plate',
+            )}
+          >
             {days ?? '—'}
           </span>
         )
@@ -370,7 +380,7 @@ function ColumnSettings({ prefs }: { prefs: ViewPrefs }) {
       </button>
 
       {open ? (
-        <div className="rounded-card border border-line bg-white p-2">
+        <div className="rounded-card border border-line bg-card p-2">
           <ul className="flex flex-wrap gap-1.5">
             {draft.order.map((id) => {
               const shown = !draft.hidden.includes(id)

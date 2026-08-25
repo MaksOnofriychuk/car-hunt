@@ -66,7 +66,7 @@ export function ListFilters({
   const chips = activeChips(query)
 
   return (
-    <section className="rounded-card border border-line bg-white p-3">
+    <section className="rounded-card border border-line bg-card p-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -133,7 +133,7 @@ export function ListFilters({
               value={draft.city ?? ''}
               onChange={(event) => patch({ city: event.target.value || null })}
               placeholder="Будь-яке"
-              className="mt-1 h-9 w-full rounded-card border border-line bg-white px-2.5 text-[14px] placeholder:text-muted"
+              className="mt-1 h-9 w-full rounded-card border border-line bg-card px-2.5 text-[14px] placeholder:text-muted"
             />
             <datalist id="filter-cities">
               {cities.map((city) => (
@@ -302,7 +302,7 @@ function RangeField({
           value={value.min ?? ''}
           onChange={(event) => set('min', event.target.value)}
           placeholder="від"
-          className="h-9 w-full min-w-0 rounded-card border border-line bg-white px-2 font-mono text-[13px] tabular-nums placeholder:font-sans placeholder:text-muted"
+          className="h-9 w-full min-w-0 rounded-card border border-line bg-card px-2 font-mono text-[13px] tabular-nums placeholder:font-sans placeholder:text-muted"
         />
         <span className="text-[12px] text-muted">–</span>
         <input
@@ -310,7 +310,7 @@ function RangeField({
           value={value.max ?? ''}
           onChange={(event) => set('max', event.target.value)}
           placeholder="до"
-          className="h-9 w-full min-w-0 rounded-card border border-line bg-white px-2 font-mono text-[13px] tabular-nums placeholder:font-sans placeholder:text-muted"
+          className="h-9 w-full min-w-0 rounded-card border border-line bg-card px-2 font-mono text-[13px] tabular-nums placeholder:font-sans placeholder:text-muted"
         />
       </div>
     </div>

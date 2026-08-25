@@ -43,6 +43,22 @@ export function formatLiters(value: number | null | undefined): string | null {
   return `${text}${NBSP}л`
 }
 
+/**
+ * Ціна у валюті, обраній у налаштуваннях. `both` показує обидві — так видно і
+ * звичну доларову ціну, і те, що реально скаже продавець по телефону.
+ */
+export function formatPrice(
+  usd: number | null | undefined,
+  uah: number | null | undefined,
+  currency: 'usd' | 'uah' | 'both',
+): string {
+  if (currency === 'uah') return uah != null ? formatUah(uah) : formatUsd(usd)
+  if (currency === 'both' && uah != null && usd != null) {
+    return `${formatUsd(usd)}${NBSP}·${NBSP}${formatUah(uah)}`
+  }
+  return formatUsd(usd)
+}
+
 /** Давність події коротко: «сьогодні», «1 д», «12 д». */
 export function shortAgo(daysAgo: number): string {
   if (daysAgo <= 0) return 'сьогодні'

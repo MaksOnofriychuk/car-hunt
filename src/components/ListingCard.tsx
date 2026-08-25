@@ -9,7 +9,9 @@ import type { ListingRow, ListingSummary } from '@/db/list'
 import type { Author } from '@/db/schema'
 import { cn } from '@/lib/cn'
 import { daysOnSale, daysSince } from '@/lib/dates'
-import { contactLabel, formatKm, formatUsd, shortAgo } from '@/lib/format'
+import { contactLabel, formatKm, formatPrice, formatUsd, shortAgo } from '@/lib/format'
+import { DENSITY_CLASSES, type Density } from '@/lib/look'
+import type { Currency } from '@/lib/settings'
 import { displayPhotos } from '@/lib/photos'
 
 type Props = {
@@ -19,9 +21,13 @@ type Props = {
   names: Record<Author, string>
   /** Поточні фільтри — щоб з картки авто повернутись у той самий список. */
   search: string
+  /** З налаштувань: у якій валюті показувати і що вважати «довго висить». */
+  display: { currency: Currency; longStandingDays: number }
+  density: Density
 }
 
-export function ListingCard({ row, today, viewer, names, search }: Props) {
+export function ListingCard({ row, today, viewer, names, search, display, density }: Props) {
+  const pad = DENSITY_CLASSES[density].card
   const { listing, stage, lastEvent, lastNote, priceDrop } = row
   const href = search
     ? `/listing/${listing.id}?from=${encodeURIComponent(search)}`
@@ -34,7 +40,7 @@ export function ListingCard({ row, today, viewer, names, search }: Props) {
   return (
     <article
       className={cn(
-        'card-in overflow-hidden rounded-card border border-line bg-white',
+        'card-in overflow-hidden rounded-card border border-line bg-card',
         contact.overdue && 'border-l-[3px] border-l-signal',
         removed && 'opacity-70',
       )}
@@ -44,7 +50,7 @@ export function ListingCard({ row, today, viewer, names, search }: Props) {
       ) : listing.status === 'failed' ? (
         <FailedBody listing={listing} />
       ) : (
-        <Link href={href} className="block p-3">
+        <Link href={href} className={cn('block', pad)}>
           <header className="flex gap-3">
             <Thumbnail listing={listing} />
             <div className="min-w-0 flex-1">
@@ -76,7 +82,7 @@ export function ListingCard({ row, today, viewer, names, search }: Props) {
                 removed && 'line-through decoration-1',
               )}
             >
-              {formatUsd(listing.priceUsd)}
+              {formatPrice(listing.priceUsd, listing.priceUah, display.currency)}
             </span>
             {priceDrop ? (
               <span className="font-mono text-[13px] leading-none text-plate tabular-nums">
@@ -90,7 +96,11 @@ export function ListingCard({ row, today, viewer, names, search }: Props) {
             ) : null}
           </div>
 
-          <PlateStrip days={daysOnSale(listing.publishedAt)} className="mt-3" />
+          <PlateStrip
+            days={daysOnSale(listing.publishedAt)}
+            longStandingDays={display.longStandingDays}
+            className="mt-3"
+          />
 
           <div className="mt-3 flex items-center gap-2">
             <StageBadge stage={stage} />

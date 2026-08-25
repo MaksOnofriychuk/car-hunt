@@ -55,7 +55,7 @@ export function Specs({ listing, specs }: { listing: Listing; specs: ListingSpec
   if (rows.length === 0 && extra.length === 0 && specs.checks.length === 0) return null
 
   return (
-    <section className="rounded-card border border-line bg-white p-3">
+    <section className="rounded-card border border-line bg-card p-3">
       <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
         Характеристики
       </h2>

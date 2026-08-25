@@ -50,7 +50,7 @@ export function TargetPrice({ listingId, value }: { listingId: string; value: nu
         autoFocus
         defaultValue={value ?? ''}
         placeholder="$"
-        className="h-9 w-[110px] rounded-card border border-line bg-white px-2.5 text-right font-mono text-[15px] tabular-nums placeholder:text-muted"
+        className="h-9 w-[110px] rounded-card border border-line bg-card px-2.5 text-right font-mono text-[15px] tabular-nums placeholder:text-muted"
       />
       <button
         type="submit"

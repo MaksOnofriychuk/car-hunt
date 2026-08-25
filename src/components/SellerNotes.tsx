@@ -13,7 +13,7 @@ export function SellerNotes({ sellerId, notes }: { sellerId: string; notes: stri
   const [state, formAction, pending] = useActionState(saveSellerNotes, IDLE)
 
   return (
-    <form action={formAction} className="rounded-card border border-line bg-white p-3">
+    <form action={formAction} className="rounded-card border border-line bg-card p-3">
       <input type="hidden" name="id" value={sellerId} />
 
       <label
@@ -29,7 +29,7 @@ export function SellerNotes({ sellerId, notes }: { sellerId: string; notes: stri
         rows={3}
         defaultValue={notes}
         placeholder="Торгується, але тримає слово. Дзвонити після 18:00."
-        className="mt-1 w-full rounded-card border border-line bg-white px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
+        className="mt-1 w-full rounded-card border border-line bg-card px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
       />
 
       <div className="mt-2 flex items-center gap-2">

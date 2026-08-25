@@ -31,7 +31,7 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
           autoComplete="current-password"
           autoFocus
           required
-          className="mt-1.5 h-12 w-full rounded-card border border-line bg-white px-3 font-mono text-[16px] tracking-wide text-ink placeholder:text-muted"
+          className="mt-1.5 h-12 w-full rounded-card border border-line bg-card px-3 font-mono text-[16px] tracking-wide text-ink placeholder:text-muted"
           placeholder="••••••••"
         />
       </div>
@@ -44,7 +44,7 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
             name="author"
             value="me"
             disabled={disabled}
-            className="h-12 rounded-card border border-ink bg-white px-3 text-[15px] font-semibold text-ink active:bg-concrete disabled:opacity-50"
+            className="h-12 rounded-card border border-ink bg-card px-3 text-[15px] font-semibold text-ink active:bg-concrete disabled:opacity-50"
           >
             Я — {names.me}
           </button>
@@ -53,7 +53,7 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
             name="author"
             value="dad"
             disabled={disabled}
-            className="h-12 rounded-card border border-ink bg-white px-3 text-[15px] font-semibold text-ink active:bg-concrete disabled:opacity-50"
+            className="h-12 rounded-card border border-ink bg-card px-3 text-[15px] font-semibold text-ink active:bg-concrete disabled:opacity-50"
           >
             Я — {names.dad}
           </button>
@@ -63,7 +63,7 @@ export function LoginForm({ names, next }: { names: Record<Author, string>; next
       {state.error ? (
         <p
           role="alert"
-          className="border-l-[3px] border-signal bg-white py-2 pl-3 text-[13px] text-ink"
+          className="border-l-[3px] border-signal bg-card py-2 pl-3 text-[13px] text-ink"
         >
           {state.blocked
             ? `Забагато спроб входу. Спробуй за ${Math.ceil((state.retryAfterSeconds ?? 0) / 60)} хв.`

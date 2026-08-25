@@ -85,6 +85,13 @@
       "when": 1787651319580,
       "tag": "0011_nice_the_anarchist",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787654403341,
+      "tag": "0012_silent_northstar",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,7 @@ export function ManualFields({ listingId, fields }: { listingId: string; fields:
   if (fields.length === 0) return null
 
   return (
-    <form action={formAction} className="rounded-card border border-line bg-white p-3">
+    <form action={formAction} className="rounded-card border border-line bg-card p-3">
       <input type="hidden" name="listingId" value={listingId} />
 
       <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">

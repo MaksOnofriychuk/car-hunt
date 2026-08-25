@@ -5,6 +5,7 @@ import { events, listings } from './schema'
 import type { Author, Event, EventPayload, EventType } from './schema'
 import { getStage } from './stage'
 
+import { kyivDatePlus } from '@/lib/dates'
 import { isTerminalStage, type Stage } from '@/lib/stages'
 
 /**
@@ -28,6 +29,8 @@ export type CallInput = {
   outcome: string
   text: string | null
   offeredPrice: number | null
+  /** Через скільки днів передзвонити (з налаштувань). 0 — дату не чіпати. */
+  followupDays?: number
 }
 
 /**
@@ -44,6 +47,15 @@ export async function recordCall(input: CallInput): Promise<Event> {
 
   if (input.outcome === 'reached' && (await getStage(input.listingId)) === 'new') {
     await changeStage(input.listingId, input.author, 'contacted')
+  }
+
+  // Дзвінок без наступної дати — це авто, яке тихо випало з черги. Тому після
+  // запису одразу ставимо, коли передзвонити; скільки саме — з налаштувань.
+  if (input.followupDays && input.followupDays > 0) {
+    await db
+      .update(listings)
+      .set({ nextContactAt: kyivDatePlus(input.followupDays) })
+      .where(eq(listings.id, input.listingId))
   }
 
   return event

@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn'
 const NAV = [
   { href: '/', label: 'Черга' },
   { href: '/sellers', label: 'Продавці' },
+  { href: '/settings', label: 'Налаштування' },
 ]
 
 export function AppHeader({ name }: { name: string }) {

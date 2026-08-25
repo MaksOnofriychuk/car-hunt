@@ -21,16 +21,24 @@ type Props = {
   label?: string
   size?: keyof typeof SIZES
   className?: string
+  /** Поріг із налаштувань: у кожного своє уявлення про «довго». */
+  longStandingDays?: number
 }
 
-export function PlateStrip({ days, label, size = 'md', className }: Props) {
+export function PlateStrip({
+  days,
+  label,
+  size = 'md',
+  className,
+  longStandingDays = LONG_STANDING_DAYS,
+}: Props) {
   const s = SIZES[size]
-  const longStanding = typeof days === 'number' && days > LONG_STANDING_DAYS
+  const longStanding = typeof days === 'number' && days > longStandingDays
 
   return (
     <div
       className={cn(
-        'flex items-stretch overflow-hidden rounded-card border border-ink bg-white',
+        'flex items-stretch overflow-hidden rounded-card border border-ink bg-card',
         s.box,
         className,
       )}

@@ -41,7 +41,7 @@ export default async function SellersPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-white p-4 text-[14px] text-muted">
+        <p className="rounded-card border border-line bg-card p-4 text-[14px] text-muted">
           Продавців ще немає. Вони зʼявляться самі, коли розпарситься перше оголошення.
         </p>
       ) : null}
@@ -52,7 +52,7 @@ export default async function SellersPage({
           <Link
             key={row.seller.id}
             href={`/sellers/${row.seller.id}`}
-            className="block rounded-card border border-line bg-white p-3"
+            className="block rounded-card border border-line bg-card p-3"
           >
             <div className="flex items-baseline gap-2">
               <h2 className="min-w-0 truncate text-[16px] font-semibold">

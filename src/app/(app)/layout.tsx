@@ -5,7 +5,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { name } = await requireSession()
 
   return (
-    <div className="min-h-dvh">
+    <div className="app-shell">
       <AppHeader name={name} />
       {/* Ширину обирає сторінка: черга в режимі таблиці широка, решта — вузька
           колонка на 560, як було. */}

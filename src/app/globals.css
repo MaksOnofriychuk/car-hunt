@@ -4,6 +4,7 @@
    Орієнтир: український номерний знак і приладова панель. */
 @theme {
   --color-concrete: #eeefec; /* фон, холодний бетонний сірий */
+  --color-card: #ffffff; /* поверхня картки */
   --color-ink: #16181a; /* текст */
   --color-plate: #0057b8; /* акцент, синій з номерного знака */
   --color-signal: #ffd200; /* сигнальний — ЛИШЕ для «прострочено» */
@@ -14,6 +15,56 @@
   --font-mono: var(--font-mono-ui), ui-monospace, Menlo, monospace;
 
   --radius-card: 4px;
+}
+
+/* Темна тема — не інверсія світлої, а власна пара до неї.
+   Фон — холодний графіт, а не чорний: чорне тло з тонкими рамками мерехтить.
+   Синій акцент той самий за відтінком, лише піднятий по світлоті, інакше
+   #0057B8 на графіті просто не читається. Сигнальний жовтий не чіпаємо — він
+   мусить лишатись сигнальним. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-concrete: #15181c;
+    --color-card: #1d2126;
+    --color-ink: #e7e9e6;
+    --color-plate: #4f95e8;
+    --color-line: #2f343b;
+    --color-muted: #98a0a8;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-concrete: #15181c;
+  --color-card: #1d2126;
+  --color-ink: #e7e9e6;
+  --color-plate: #4f95e8;
+  --color-line: #2f343b;
+  --color-muted: #98a0a8;
+  color-scheme: dark;
+}
+
+/* Обраний шрифт інтерфейсу. Змінна одна, а який саме шрифт у ній — вирішує
+   атрибут на <html>, який ставить сервер із cookie. */
+:root { --font-sans-ui: var(--font-plex); }
+:root[data-font='fira'] { --font-sans-ui: var(--font-fira); }
+:root[data-font='inter'] { --font-sans-ui: var(--font-inter); }
+:root[data-font='rubik'] { --font-sans-ui: var(--font-rubik); }
+
+/* Розмір інтерфейсу. `zoom` замість гри зі шрифтом навмисно: він масштабує
+   все — відступи, висоти кнопок, мініатюри, — а не тільки літери, як просив
+   SPEC налаштувань. Висоту екрана ділимо назад на множник, інакше сторінка
+   завжди мала б зайвий скрол. */
+:root[data-size='s'] { --ui-zoom: 0.92; }
+:root[data-size='l'] { --ui-zoom: 1.14; }
+:root[data-size='xl'] { --ui-zoom: 1.3; }
+
+body {
+  zoom: var(--ui-zoom, 1);
+}
+
+.app-shell {
+  min-height: calc(100dvh / var(--ui-zoom, 1));
 }
 
 @layer base {
@@ -60,4 +111,48 @@
   .card-in {
     animation: none;
   }
+}
+
+/* Друк і збереження в PDF. Браузер друкує те саме дерево, тому прибираємо
+   зайве й повертаємо чорне по білому: кольорові плашки на папері не читаються,
+   а тонер коштує грошей. */
+@media print {
+  html {
+    --color-concrete: #ffffff;
+    --color-card: #ffffff;
+    --color-ink: #000000;
+    --color-line: #999999;
+    --color-muted: #444444;
+    --ui-zoom: 1;
+  }
+
+  body {
+    zoom: 1;
+  }
+
+  header.sticky,
+  nav {
+    display: none !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+}
+
+@page {
+  margin: 14mm 12mm;
 }

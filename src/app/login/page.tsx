@@ -25,7 +25,7 @@ export default async function LoginPage({
       </div>
 
       {block.blocked ? (
-        <p className="border-l-[3px] border-signal bg-white p-3 text-[14px]">
+        <p className="border-l-[3px] border-signal bg-card p-3 text-[14px]">
           Забагато спроб входу. Спробуй за{' '}
           <span className="font-mono tabular-nums">{Math.ceil(block.retryAfterSeconds / 60)}</span> хв.
         </p>

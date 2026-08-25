@@ -127,7 +127,7 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
             name="descriptionText"
             rows={5}
             defaultValue={values.descriptionText}
-            className="mt-1 w-full rounded-card border border-line bg-white px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
+            className="mt-1 w-full rounded-card border border-line bg-card px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
           />
         </label>
       </Section>
@@ -181,7 +181,7 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
                   type="button"
                   onClick={() => setPhotos((list) => list.filter((item) => item.key !== photo.key))}
                   aria-label="Прибрати фото"
-                  className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full border border-ink bg-white text-[11px] leading-none"
+                  className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full border border-ink bg-card text-[11px] leading-none"
                 >
                   ✕
                 </button>
@@ -209,7 +209,7 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
       </Section>
 
       {state.error ? (
-        <p className="border-l-[3px] border-signal bg-white py-2 pl-3 text-[13px]" role="alert">
+        <p className="border-l-[3px] border-signal bg-card py-2 pl-3 text-[13px]" role="alert">
           {state.error}
         </p>
       ) : null}
@@ -238,7 +238,7 @@ export function ListingForm({ listingId, values, photos: initialPhotos }: Props)
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-line bg-white p-3">
+    <section className="rounded-card border border-line bg-card p-3">
       <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
         {title}
       </h2>
@@ -282,7 +282,7 @@ function Field({
         autoFocus={autoFocus}
         inputMode={numeric ? 'numeric' : undefined}
         className={cn(
-          'mt-1 h-10 w-full rounded-card border border-line bg-white px-2.5 text-[14px] placeholder:text-muted',
+          'mt-1 h-10 w-full rounded-card border border-line bg-card px-2.5 text-[14px] placeholder:text-muted',
           numeric && 'font-mono tabular-nums',
         )}
       />

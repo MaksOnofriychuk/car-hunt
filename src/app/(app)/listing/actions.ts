@@ -21,6 +21,7 @@ import {
 } from '@/db/listings'
 import { listings, SELLER_TYPES, STAGES, type SellerType } from '@/db/schema'
 import { addSellerPhone, saveManualSeller } from '@/db/sellers'
+import { getSettings } from '@/db/settings'
 import { manualRef } from '@/lib/sources'
 import { requireAuthor } from '@/lib/auth'
 import { kyivDatePlus } from '@/lib/dates'
@@ -80,12 +81,15 @@ export async function logCall(_prev: FormState, formData: FormData): Promise<For
   const { listingId, outcome, text, offeredPrice } = parsed.data
   if (!(await listingExists(listingId))) return { error: NOT_FOUND, ok: false }
 
+  const settings = await getSettings(author)
+
   await recordCall({
     listingId,
     author,
     outcome,
     text: text ?? null,
     offeredPrice: offeredPrice ?? null,
+    followupDays: settings.callFollowupDays,
   })
   refresh(listingId)
 

@@ -42,7 +42,7 @@ export function CallForm({ listingId, onDone, compact = false }: Props) {
           rows={compact ? 2 : 3}
           autoFocus
           placeholder="Що сказали"
-          className="min-w-0 flex-1 rounded-card border border-line bg-white px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
+          className="min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
         />
         {compact ? null : (
           <label className="flex w-[104px] shrink-0 flex-col gap-1">
@@ -54,7 +54,7 @@ export function CallForm({ listingId, onDone, compact = false }: Props) {
               type="text"
               inputMode="numeric"
               placeholder="$"
-              className="h-10 w-full rounded-card border border-line bg-white px-2.5 font-mono text-[14px] tabular-nums placeholder:text-muted"
+              className="h-10 w-full rounded-card border border-line bg-card px-2.5 font-mono text-[14px] tabular-nums placeholder:text-muted"
             />
           </label>
         )}
@@ -100,7 +100,7 @@ export function CommentForm({ listingId, onDone, compact = false }: Props) {
         rows={compact ? 2 : 3}
         autoFocus
         placeholder="Коментар"
-        className="w-full rounded-card border border-line bg-white px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
+        className="w-full rounded-card border border-line bg-card px-2.5 py-2 text-[14px] leading-snug placeholder:text-muted"
       />
 
       <div className="mt-2 flex justify-end">

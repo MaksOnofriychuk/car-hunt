@@ -11,6 +11,11 @@ export interface FileStorage {
   remove(key: string): Promise<void>
   /** Адреса для показу. Ключі в базі лишаються ключами — URL збирається тут. */
   url(key: string): string
+  /**
+   * Скільки місця зайнято. `null` — сховище не вміє сказати без перебору всього
+   * бакета (R2), і платити за це запитом заради цифри на екрані не варто.
+   */
+  usage(): Promise<{ files: number; bytes: number } | null>
 }
 
 export function contentTypeFor(key: string): string {

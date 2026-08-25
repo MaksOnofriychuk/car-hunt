@@ -86,7 +86,7 @@ export function PasteBar() {
   const count = value.split('\n').filter((line) => findListingLink(line) !== null).length
 
   return (
-    <section className="rounded-card border border-line bg-white p-3">
+    <section className="rounded-card border border-line bg-card p-3">
       <div className="flex items-center justify-between">
         <label
           htmlFor="paste-url"
@@ -111,7 +111,7 @@ export function PasteBar() {
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder={'https://auto.ria.com/…\nhttps://www.olx.ua/…'}
-            className="min-w-0 flex-1 rounded-card border border-line bg-white px-2.5 py-2 font-mono text-[13px] leading-relaxed placeholder:text-muted"
+            className="min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 py-2 font-mono text-[13px] leading-relaxed placeholder:text-muted"
           />
         ) : (
           <input
@@ -128,7 +128,7 @@ export function PasteBar() {
                 void submit()
               }
             }}
-            className="h-10 min-w-0 flex-1 rounded-card border border-line bg-white px-2.5 font-mono text-[13px] placeholder:text-muted"
+            className="h-10 min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 font-mono text-[13px] placeholder:text-muted"
           />
         )}
 
@@ -136,7 +136,7 @@ export function PasteBar() {
           type="button"
           onClick={submit}
           disabled={busy || value.trim().length === 0}
-          className="h-10 shrink-0 self-start rounded-card border border-ink bg-white px-3 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+          className="h-10 shrink-0 self-start rounded-card border border-ink bg-card px-3 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
         >
           {busy ? 'Читаю…' : `Додати${bulk && count > 0 ? ` ${count}` : ''}`}
         </button>

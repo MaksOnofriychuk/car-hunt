@@ -67,12 +67,12 @@ export function SellerPhones({
             inputMode="tel"
             autoFocus
             placeholder={masked ?? '+380 __ ___ __ __'}
-            className="h-10 min-w-0 flex-1 rounded-card border border-line bg-white px-2.5 font-mono text-[14px] tabular-nums placeholder:text-muted"
+            className="h-10 min-w-0 flex-1 rounded-card border border-line bg-card px-2.5 font-mono text-[14px] tabular-nums placeholder:text-muted"
           />
           <button
             type="submit"
             disabled={pending}
-            className="h-10 shrink-0 rounded-card border border-ink bg-white px-3 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+            className="h-10 shrink-0 rounded-card border border-ink bg-card px-3 text-[11px] font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
           >
             {pending ? 'Пишу…' : 'Зберегти'}
           </button>

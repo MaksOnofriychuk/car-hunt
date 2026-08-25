@@ -43,7 +43,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         ← Продавці
       </Link>
 
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <div className="flex items-baseline gap-2">
           <h1 className="min-w-0 truncate text-[19px] font-semibold leading-tight">
             {seller.name ?? 'Без імені'}
@@ -89,7 +89,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         </dl>
 
         {sameAs.length > 0 ? (
-          <p className="mt-3 border-l-[3px] border-signal bg-white py-2 pl-3 text-[13px]">
+          <p className="mt-3 border-l-[3px] border-signal bg-card py-2 pl-3 text-[13px]">
             Той самий номер є в: {sameAs.map((other) => other.name ?? 'без імені').join(', ')}.
             Можливо, це та сама людина.
           </p>
@@ -98,7 +98,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
 
       <SellerNotes sellerId={seller.id} notes={seller.notes ?? ''} />
 
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
           Його авто
         </h2>
@@ -132,7 +132,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         )}
       </section>
 
-      <section className="rounded-card border border-line bg-white p-3">
+      <section className="rounded-card border border-line bg-card p-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
           Історія розмов
         </h2>
