@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql, type SQL } from 'drizzle-orm'
+import type { PgColumn } from 'drizzle-orm/pg-core'
 
 import { db } from './index'
 import { listings, type Author, type Listing, type SourceName } from './schema'
@@ -187,6 +188,76 @@ function blank(value: unknown): unknown {
  * усе, що пише парсер, — і фоновий `parseListing`, і перерозбір: cron має
  * оновлювати ціну, але не повертати марку, яку колись витягнув невірно.
  */
+
+/**
+ * Дані з поста в Telegram: заповнюють **тільки порожні** колонки і ніколи не
+ * затирають те, що знайшов парсер (SPEC, «Злиття, а не дубль»).
+ *
+ * Одним запитом із `coalesce`, а не «прочитав — змінив — записав»: між читанням
+ * і записом легко встигає парсер зі своїм UPDATE, і тоді пост затер би свіжі
+ * дані власною чернеткою. Транзакція тут не допомогла б — обидві сторони
+ * ходять у мережу, а тримати транзакцію через HTTP-запит не можна.
+ *
+ * Виняток один — VIN. AUTO.RIA кладе в ту саму колонку **маску**
+ * (`1HGCR2650EA7XXXXX`), і правило «не затирати непорожнє» законсервувало б її,
+ * а повний VIN із поста пропав би. Тому повний перемагає масковий.
+ */
+export type PostColumns = Partial<{
+  title: string | null
+  brand: string | null
+  model: string | null
+  year: number | null
+  mileageKm: number | null
+  city: string | null
+  driveType: string | null
+  fuelType: string | null
+  engineVolume: number | null
+  descriptionText: string | null
+  publishedAt: Date | null
+  vin: string | null
+}>
+
+export async function fillEmptyColumns(
+  listing: Pick<Listing, 'id' | 'manualFields' | 'source'>,
+  values: PostColumns,
+  options: { vinIsFull?: boolean } = {},
+): Promise<void> {
+  // Виправлене руками перемагає і парсер, і пост.
+  const allowed = dropManual(listing, values) as Record<string, unknown>
+  const set: Record<string, SQL> = {}
+
+  for (const [key, value] of Object.entries(allowed)) {
+    if (value === null || value === undefined) continue
+    if (key === 'vin') continue
+
+    const column = listings[key as keyof typeof listings] as PgColumn
+    set[key] = sql`coalesce(${column}, ${value})`
+  }
+
+  const vin = allowed.vin
+  if (typeof vin === 'string' && options.vinIsFull) {
+    // Порожньо або маска (менше 17 знаків чи хвіст із X) — пост перемагає.
+    set.vin = sql`case
+      when ${listings.vin} is null
+        or length(${listings.vin}) <> 17
+        or ${listings.vin} ~ 'X{3,}'
+      then ${vin}
+      else ${listings.vin}
+    end`
+  } else if (typeof vin === 'string') {
+    set.vin = sql`coalesce(${listings.vin}, ${vin})`
+  }
+
+  // `published_at` для telegram-картки — найраніший пост, а не останній.
+  if (values.publishedAt) {
+    set.publishedAt = sql`least(coalesce(${listings.publishedAt}, ${values.publishedAt}), ${values.publishedAt})`
+  }
+
+  if (Object.keys(set).length === 0) return
+
+  await db.update(listings).set(set).where(eq(listings.id, listing.id))
+}
+
 export function dropManual<T extends Record<string, unknown>>(
   listing: Pick<Listing, 'manualFields'>,
   values: T,

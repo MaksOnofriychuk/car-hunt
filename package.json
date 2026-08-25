@@ -16,7 +16,8 @@
     "reparse": "tsx scripts/reparse.ts",
     "shot": "tsx scripts/shot.ts",
     "tg:check": "tsx scripts/telegram-check.ts",
-    "parse": "tsx scripts/parse-one.ts"
+    "parse": "tsx scripts/parse-one.ts",
+    "tg:webhook": "tsx scripts/set-webhook.ts"
   },
   "dependencies": {
     "@tanstack/react-table": "^9.1.2",

@@ -167,3 +167,85 @@ export function priceMessage(
     .filter(Boolean)
     .join('\n')
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Відповіді бота на вхідні                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Коротка довідка. Заразом показує chat.id — щоб не діставати його курлом. */
+export function helpMessage(chatId: number | string): string {
+  return [
+    '<b>Car Hunt</b> — трекер пошуку авто.',
+    '',
+    'Що вмію:',
+    '• кинь посилання на AUTO.RIA або OLX — заведу картку;',
+    '• перешли пост із групи — витягну телефон, ціну і VIN, а якщо в пості є',
+    '  посилання на оголошення, доклею до тієї ж картки, а не створю другу;',
+    '• відповідай реплаєм на моє повідомлення — запишу коментар до того авто;',
+    '• /today — кому дзвонити сьогодні.',
+    '',
+    `Твій chat id: <code>${chatId}</code>`,
+  ].join('\n')
+}
+
+export type TodayCar = {
+  id: string
+  title: string | null
+  priceUsd: number | null
+  priceUah: number | null
+  overdue: boolean
+}
+
+/** «Сьогодні дзвонити» — прострочене вгорі, бо саме воно і горить. */
+export function todayMessage(cars: TodayCar[], currency: Currency, limit = 20): string {
+  if (cars.length === 0) return '📋 На сьогодні дзвонити нема кому. Черга порожня.'
+
+  const lines = cars.slice(0, limit).map((car) => {
+    const price = formatPrice(car.priceUsd, car.priceUah, currency)
+    const mark = car.overdue ? '❗️' : '•'
+    return `${mark} <a href="${listingUrl(car.id)}">${escapeHtml(car.title ?? 'Без назви')}</a> — ${price}`
+  })
+
+  const tail = cars.length > limit ? [`… і ще ${cars.length - limit}`] : []
+
+  return [`📋 <b>Сьогодні дзвонити: ${cars.length}</b>`, ...lines, ...tail].join('\n')
+}
+
+/** Відповідь на кинуте посилання. */
+export function addedMessage(
+  listing: Pick<Listing, 'id' | 'title' | 'priceUsd' | 'priceUah'>,
+  currency: Currency,
+  duplicate: boolean,
+): string {
+  const title = escapeHtml(listing.title ?? 'Без назви')
+  const price = formatPrice(listing.priceUsd, listing.priceUah, currency)
+
+  return duplicate
+    ? `Це авто вже є: <b>${title}</b> — ${price}`
+    : `Додав: <b>${title}</b> — ${price}`
+}
+
+/** Відповідь на переслений пост: що саме з нього дістали. */
+export function postSavedMessage(
+  title: string | null,
+  priceUsd: number | null,
+  currency: Currency,
+  options: { created: boolean; duplicate: boolean; phones: string[]; sameAs: string[] },
+): string {
+  if (options.duplicate) return `Цей пост уже є — нічого не дублюю.`
+
+  const head = options.created
+    ? `Завів: <b>${escapeHtml(title ?? 'Без назви')}</b>`
+    : `Доклеїв пост до <b>${escapeHtml(title ?? 'Без назви')}</b>`
+
+  const parts = [head]
+  if (priceUsd) parts.push(`ціна з поста ${formatPrice(priceUsd, null, currency)}`)
+  if (options.phones.length > 0) parts.push(`телефон ${options.phones.join(', ')}`)
+
+  const warning =
+    options.sameAs.length > 0
+      ? `\n⚠️ Цей номер уже записаний у ${options.sameAs.map(escapeHtml).join(', ')} — може, та сама людина.`
+      : ''
+
+  return parts.join(' · ') + warning
+}

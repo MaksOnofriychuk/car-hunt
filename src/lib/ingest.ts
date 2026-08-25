@@ -3,11 +3,12 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { events, listings, priceHistory, type Author, type Listing } from '@/db/schema'
 import { linkSeller } from '@/db/sellers'
+import { listingForTelegramRef } from '@/db/telegram'
 import { dropManual } from '@/db/listings'
 import { archiveListing } from '@/lib/archive'
 import { bothPrices } from '@/lib/rates'
 import { canonicalizeRef } from '@/lib/sources/canonicalize'
-import { refForInput, sourceFor } from '@/lib/sources'
+import { isRefreshable, refForInput, sourceFor } from '@/lib/sources'
 import { QuotaExceededError } from '@/lib/sources/http'
 import { notifyPriceChange } from '@/lib/telegram/notify'
 import { ListingGoneError, SourceBlockedError, SourceNotReadyError } from '@/lib/sources/types'
@@ -35,6 +36,14 @@ export async function ingestUrl(rawUrl: string, author: Author): Promise<IngestR
   // що прилетить вебхуком, створить другу картку.
   const { ref } = await canonicalizeRef(draft)
 
+  // Посилання на пост, який у нас уже є, веде на **наявну** картку — а вона
+  // цілком може бути autoria-карткою, до якої пост колись доклеївся. Це і є
+  // відповідь на «t.me-посилання і вебхук дають різні форми source_id».
+  if (ref.source === 'telegram') {
+    const fromPost = await listingForTelegramRef(ref)
+    if (fromPost) return { id: fromPost, duplicate: true, recognized }
+  }
+
   const [existing] = await db
     .select({ id: listings.id })
     .from(listings)
@@ -50,7 +59,9 @@ export async function ingestUrl(rawUrl: string, author: Author): Promise<IngestR
       sourceId: ref.id,
       url,
       // Невідомий домен одразу failed: парсити нічим, далі заповнюють руками.
-      status: recognized ? 'pending' : 'failed',
+      // Telegram і manual одразу active: тягнути звідти нема чого, а `pending`
+      // означав би вічний поллінг на головній.
+      status: recognized ? (isRefreshable(ref.source) ? 'pending' : 'active') : 'failed',
       createdBy: author,
     })
     .returning({ id: listings.id })

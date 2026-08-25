@@ -1,4 +1,4 @@
-import { and, arrayOverlaps, eq, ne } from 'drizzle-orm'
+import { and, arrayOverlaps, eq, isNull, ne } from 'drizzle-orm'
 
 import { db } from '@/db'
 import {
@@ -261,6 +261,21 @@ async function findOrCreate(listing: Listing, phone: string | null): Promise<Sel
 }
 
 /** Наші нотатки про продавця. Парсер їх не чіпає — це поле тільки людини. */
+/**
+ * Юзернейм із поста — другий контакт продавця поруч із телефоном. Записується,
+ * лише коли порожньо: це довідкове поле, а не ключ склейки (його міняють), і
+ * введене руками воно не перезаписує.
+ */
+export async function setSellerTelegramUsername(
+  sellerId: string,
+  username: string,
+): Promise<void> {
+  await db
+    .update(sellers)
+    .set({ telegramUsername: username })
+    .where(and(eq(sellers.id, sellerId), isNull(sellers.telegramUsername)))
+}
+
 export async function setSellerNotes(id: string, notes: string | null): Promise<void> {
   await db.update(sellers).set({ notes }).where(eq(sellers.id, id))
 }

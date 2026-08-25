@@ -136,3 +136,17 @@ describe('textHashOf', () => {
     expect(textHashOf('фото')).toBeNull()
   })
 })
+
+describe('carLinks', () => {
+  it('не бере посилання з рекламного рядка про кредит', () => {
+    const parsed = parsePostText(
+      'Toyota RAV4\nhttps://auto.ria.com/uk/auto_toyota_rav4_12345678.html\n' +
+        'Це авто в кредит: https://bank.example.com/credit\nhttps://t.me/avtorynok/55',
+    )
+
+    expect(parsed.links).toHaveLength(3)
+    expect(parsed.carLinks).toEqual([
+      'https://auto.ria.com/uk/auto_toyota_rav4_12345678.html',
+    ])
+  })
+})

@@ -46,6 +46,11 @@ export type ParsedPost = {
   phones: string[]
   username: string | null
   links: string[]
+  /**
+   * Посилання, за якими має сенс створювати картку: без t.me, реферальних і
+   * тих, що стоять у рядку про кредит («це авто в кредит» веде на банк).
+   */
+  carLinks: string[]
   /** Потужність та інше ненадійне — довідково, колонки для цього немає. */
   power: string | null
   /** Рядки, які нічого не дали, — вони і є опис. */
@@ -69,6 +74,14 @@ export function parsePostText(raw: string): ParsedPost {
   const lines = text.split('\n').map((line) => line.trim())
 
   const links = uniq(text.match(URL_RE) ?? []).map(trimTail)
+  // Посилання з рекламних рядків не рахуються: картку створює авто, а не банк.
+  const carLinks = uniq(
+    lines
+      .filter((line) => !JUNK_LINE.test(line))
+      .flatMap((line) => line.match(URL_RE) ?? [])
+      .map(trimTail)
+      .filter(isCarLink),
+  )
   const used = new Set<number>()
 
   const result: ParsedPost = {
@@ -87,6 +100,7 @@ export function parsePostText(raw: string): ParsedPost {
     phones: [],
     username: null,
     links,
+    carLinks,
     power: null,
     descriptionText: null,
   }

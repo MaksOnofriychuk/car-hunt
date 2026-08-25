@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { getAuthor } from '@/lib/auth'
 import { ingestUrl, parseListing } from '@/lib/ingest'
+import { findListingLink } from '@/lib/sources/links'
 import { notifyNewListing } from '@/lib/telegram/notify'
 
 export const runtime = 'nodejs'
@@ -16,6 +17,22 @@ const bodySchema = z
     message: 'Потрібен url або urls',
   })
 
+/**
+ * Що саме вважати окремим входом. Текст поста, вкинутий у «вставити багато»,
+ * розбивається по рядках — і «2015», «245 тис км» та VIN стали б окремими
+ * картками manual/failed (SPEC, «Сміття в тексті»).
+ *
+ * Правило: є хоч одне посилання — беремо тільки рядки з посиланнями; немає
+ * жодного — це **один** вхід, а не N.
+ */
+function inputsFrom(raw: string[]): string[] {
+  const withLinks = raw.filter((line) => findListingLink(line) !== null)
+  if (withLinks.length > 0) return withLinks
+
+  const text = raw.join('\n').trim()
+  return text ? [text] : []
+}
+
 export async function POST(request: Request) {
   const author = await getAuthor()
   if (!author) return NextResponse.json({ error: 'Не авторизовано' }, { status: 401 })
@@ -25,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 })
   }
 
-  const urls = parsed.data.urls?.length ? parsed.data.urls : [parsed.data.url!]
+  const urls = inputsFrom(parsed.data.urls?.length ? parsed.data.urls : [parsed.data.url!])
 
   const results = []
   for (const url of urls) {

@@ -218,6 +218,23 @@ export async function notifyStage(listingId: string, actor: Author, stage: Stage
 }
 
 /**
+ * Ціна змінилась між двома постами. На відміну від ціни в оголошенні, тут є
+ * автор дії — той, хто переслав, — тому діє звичне правило «пишемо іншому».
+ */
+export async function notifyPostPrice(
+  listing: Listing,
+  actor: Author,
+  change: { oldPrice: number; newPrice: number },
+): Promise<void> {
+  await safely('ціна з поста', async () => {
+    const to = await recipient(otherAuthor(actor), 'price')
+    if (!to) return
+
+    await deliver(to, listing.id, priceMessage(listing, to.settings.currency, change), null)
+  })
+}
+
+/**
  * Зміна ціни в оголошенні. Єдиний випадок, коли пишемо **обом**: діяв не
  * користувач, а продавець, і «автора дії», якого треба обійти, тут немає.
  */
