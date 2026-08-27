@@ -9,7 +9,8 @@
 # застосунок, звіряючи годину за Києвом із `digest_at` кожного.
 #
 # Потрібні два секрети репозиторію (Settings → Secrets and variables → Actions):
-#   APP_URL     — https://car-hunt.vercel.app
+#   APP_URL     — https://car-hunt-phi.vercel.app (адреса саме нашого проєкту:
+#                 домен car-hunt.vercel.app зайнятий чужим застосунком)
 #   CRON_SECRET — те саме значення, що у змінних Vercel
 name: cron
 
@@ -26,6 +27,13 @@ jobs:
     if: github.event.schedule == '10 * * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Перевірка секретів
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$APP_URL" || { echo "::error::Немає секрету APP_URL"; exit 1; }
+          test -n "$CRON_SECRET" || { echo "::error::Немає секрету CRON_SECRET"; exit 1; }
       - name: Оновлення цін, архіву і черги Telegram
         run: |
           curl --fail --silent --show-error --max-time 120 \
@@ -36,6 +44,13 @@ jobs:
     if: github.event.schedule == '15 * * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Перевірка секретів
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$APP_URL" || { echo "::error::Немає секрету APP_URL"; exit 1; }
+          test -n "$CRON_SECRET" || { echo "::error::Немає секрету CRON_SECRET"; exit 1; }
       - name: Ранкове зведення (надішлеться лише тому, кому вже час)
         run: |
           curl --fail --silent --show-error --max-time 60 \
