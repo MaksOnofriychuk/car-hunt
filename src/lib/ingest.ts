@@ -10,7 +10,7 @@ import { bothPrices } from '@/lib/rates'
 import { canonicalizeRef } from '@/lib/sources/canonicalize'
 import { isRefreshable, refForInput, sourceFor } from '@/lib/sources'
 import { QuotaExceededError } from '@/lib/sources/http'
-import { notifyPriceChange } from '@/lib/telegram/notify'
+import { notifyPriceChange, notifyRemoved } from '@/lib/telegram/notify'
 import { ListingGoneError, SourceBlockedError, SourceNotReadyError } from '@/lib/sources/types'
 
 /** Версія розбору. Піднімати, коли парсер став діставати щось нове. */
@@ -180,6 +180,11 @@ async function handleFailure(listing: Listing, error: unknown): Promise<void> {
   // Оголошення зняли — тільки статус, нічого не видаляємо і не перезаписуємо.
   if (error instanceof ListingGoneError) {
     await db.update(listings).set({ status: 'removed' }).where(eq(listings.id, listing.id))
+
+    // Найчастіше це продаж — і це новина, заради якої варто дістати телефон.
+    // Умова важлива: сповіщення йде лише в мить переходу, а не щоразу, коли
+    // хтось руками перечитає вже зняту картку.
+    if (listing.status !== 'removed') await notifyRemoved(listing)
     return
   }
 

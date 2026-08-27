@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { isFullVin, parsePostText, textHashOf, type ParsedPost } from './post-parse'
 import { savePostPhotos, type PhotoRef } from './post-photos'
-import { notifyNewListing, notifyPostPrice } from './notify'
+import { notifyNewListing, notifyPriceChange } from './notify'
 
 import { db } from '@/db'
 import { events, listings, type Author, type Listing } from '@/db/schema'
@@ -134,7 +134,7 @@ export async function processPost(post: BuiltPost): Promise<PostResult> {
         },
       })
 
-      await notifyPostPrice(target.listing, post.forwardedBy, {
+      await notifyPriceChange(target.listing, {
         oldPrice: before.priceUsd,
         newPrice: money.priceUsd,
       })
@@ -153,7 +153,7 @@ export async function processPost(post: BuiltPost): Promise<PostResult> {
   await saveSeller(target.listingId, parsed)
   await attachPhotos(row.id, post)
 
-  // Нове авто — звичне сповіщення іншому; передрук наявного лишається тихим.
+  // Нове авто — звичне сповіщення обом; передрук наявного лишається тихим.
   if (target.created) await notifyNewListing(target.listingId, post.forwardedBy)
 
   const fresh = await listingById(target.listingId)

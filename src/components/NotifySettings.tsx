@@ -9,7 +9,7 @@ import { IDLE } from '@/lib/forms'
 import type { Settings } from '@/lib/settings'
 
 /**
- * Сповіщення в Telegram. Правило «пишемо іншому, не автору дії» лишається
+ * Сповіщення в Telegram. Правило «пишемо обом, і автору дії теж» лишається
  * незмінним — тут лише про те, які саме події турбують і о котрій годині.
  */
 
@@ -18,6 +18,7 @@ const SWITCHES: { name: keyof Settings; label: string; hint: string }[] = [
   { name: 'notifyComment', label: 'Коментарі і дзвінки', hint: 'записали розмову з продавцем' },
   { name: 'notifyPrice', label: 'Зміни ціни', hint: 'продавець змінив ціну в оголошенні' },
   { name: 'notifyStage', label: 'Зміни етапу', hint: 'авто рушило по воронці' },
+  { name: 'notifyRemoved', label: 'Зняті оголошення', hint: 'авто зникло з майданчика — схоже, продали' },
 ]
 
 export function NotifySettings({ settings }: { settings: Settings }) {
@@ -27,7 +28,7 @@ export function NotifySettings({ settings }: { settings: Settings }) {
     <form action={formAction} className="surface p-3">
       <h2 className="t-micro text-faint">Сповіщення</h2>
       <p className="t-body mt-1 text-faint">
-        Бот ще не написаний — налаштування зберігаються і почнуть діяти, щойно зʼявиться розсилка.
+        Кожне сповіщення йде обом — і тому, хто його спричинив, теж. Перемикачі тут лише твої.
       </p>
 
       <ul className="mt-2 divide-y divide-edge">

@@ -7,6 +7,7 @@ import {
   listingUrl,
   newListingMessage,
   priceMessage,
+  removedMessage,
   stageMessage,
   type NotificationKind,
 } from './messages'
@@ -18,7 +19,7 @@ import { listings, type Listing } from '@/db/schema'
 import { timeInKyiv } from '@/lib/dates'
 import type { Settings } from '@/lib/settings'
 import { signedFileUrl } from '@/lib/storage/signed'
-import { otherAuthor, userNames, type Author } from '@/lib/users'
+import { AUTHOR_VALUES, userNames, type Author } from '@/lib/users'
 import type { Stage } from '@/lib/stages'
 
 /**
@@ -26,8 +27,10 @@ import type { Stage } from '@/lib/stages'
  *
  * Три правила, які тут не міняються:
  *
- *   1. **пишемо іншому, не автору дії.** Свої ж дзвінки й коментарі назад не
- *      прилітають — це не стрічка новин, а спосіб не питати «ну що там»;
+ *   1. **пишемо обом, і автору дії теж.** Машина шукається на двох, і кожен
+ *      крок по ній — спільна новина: телефон має показати її обом, незалежно
+ *      від того, хто саме сидів у застосунку. Своє ж повідомлення заразом
+ *      підтверджує, що дія дійшла до бази;
  *   2. **перемикачі з налаштувань отримувача.** Кожен вирішує сам, що його
  *      турбує, і валюту в повідомленні теж бере зі своїх налаштувань;
  *   3. **сповіщення ніколи не ламає дію.** Телеграм не відповів, токена немає,
@@ -45,6 +48,7 @@ const TOGGLES: Record<NotificationKind, keyof Settings> = {
   comment: 'notifyComment',
   stage: 'notifyStage',
   price: 'notifyPrice',
+  removed: 'notifyRemoved',
 }
 
 function chatIdFor(author: Author): string | null {
@@ -83,17 +87,27 @@ function photoFor(listing: Listing): string | null {
 
 type Recipient = { author: Author; chatId: string; settings: Settings }
 
-/** Кому насправді йде повідомлення цього типу — з урахуванням його перемикача. */
-async function recipient(author: Author, kind: NotificationKind): Promise<Recipient | null> {
-  if (!hasBotToken()) return null
+/**
+ * Кому йде повідомлення цього типу. Обом — але кожному за його перемикачами:
+ * спільна розсилка не скасовує особистих налаштувань, і той, хто вимкнув
+ * «зміни етапу», їх і не побачить.
+ */
+async function recipients(kind: NotificationKind): Promise<Recipient[]> {
+  if (!hasBotToken()) return []
 
-  const chatId = chatIdFor(author)
-  if (!chatId) return null
+  const found: Recipient[] = []
 
-  const settings = await getSettings(author)
-  if (!settings[TOGGLES[kind]]) return null
+  for (const author of AUTHOR_VALUES) {
+    const chatId = chatIdFor(author)
+    if (!chatId) continue
 
-  return { author, chatId, settings }
+    const settings = await getSettings(author)
+    if (!settings[TOGGLES[kind]]) continue
+
+    found.push({ author, chatId, settings })
+  }
+
+  return found
 }
 
 /**
@@ -142,6 +156,24 @@ async function listingById(listingId: string): Promise<Listing | null> {
   return row ?? null
 }
 
+/**
+ * Розіслати обом. Текст — функція від отримувача, бо валюта в кожного своя.
+ *
+ * `safely` стоїть **усередині** циклу, а не навколо нього: якщо чат одного з
+ * нас не відповів, другий однаково має отримати своє повідомлення.
+ */
+async function broadcast(
+  what: string,
+  kind: NotificationKind,
+  listing: Listing,
+  text: (to: Recipient) => string,
+  photoUrl: string | null = null,
+): Promise<void> {
+  for (const to of await recipients(kind)) {
+    await safely(`${what} → ${to.author}`, () => deliver(to, listing.id, text(to), photoUrl))
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Події                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -152,14 +184,16 @@ async function listingById(listingId: string): Promise<Listing | null> {
  */
 export async function notifyNewListing(listingId: string, actor: Author): Promise<void> {
   await safely('нове авто', async () => {
-    const to = await recipient(otherAuthor(actor), 'new')
-    if (!to) return
-
     const listing = await listingById(listingId)
     if (!listing) return
 
-    const text = newListingMessage(listing, userNames()[actor], to.settings.currency)
-    await deliver(to, listing.id, text, photoFor(listing))
+    await broadcast(
+      'нове авто',
+      'new',
+      listing,
+      (to) => newListingMessage(listing, userNames()[actor], to.settings.currency),
+      photoFor(listing),
+    )
   })
 }
 
@@ -169,13 +203,12 @@ export async function notifyCall(
   call: { outcome: string; text: string | null; offeredPrice: number | null },
 ): Promise<void> {
   await safely('дзвінок', async () => {
-    const to = await recipient(otherAuthor(actor), 'call')
-    if (!to) return
-
     const listing = await listingById(listingId)
     if (!listing) return
 
-    await deliver(to, listing.id, callMessage(listing, userNames()[actor], to.settings.currency, call), null)
+    await broadcast('дзвінок', 'call', listing, (to) =>
+      callMessage(listing, userNames()[actor], to.settings.currency, call),
+    )
   })
 }
 
@@ -185,69 +218,50 @@ export async function notifyComment(
   text: string,
 ): Promise<void> {
   await safely('коментар', async () => {
-    const to = await recipient(otherAuthor(actor), 'comment')
-    if (!to) return
-
     const listing = await listingById(listingId)
     if (!listing) return
 
-    await deliver(
-      to,
-      listing.id,
+    await broadcast('коментар', 'comment', listing, (to) =>
       commentMessage(listing, userNames()[actor], to.settings.currency, text),
-      null,
     )
   })
 }
 
 export async function notifyStage(listingId: string, actor: Author, stage: Stage): Promise<void> {
   await safely('етап', async () => {
-    const to = await recipient(otherAuthor(actor), 'stage')
-    if (!to) return
-
     const listing = await listingById(listingId)
     if (!listing) return
 
-    await deliver(
-      to,
-      listing.id,
+    await broadcast('етап', 'stage', listing, (to) =>
       stageMessage(listing, userNames()[actor], to.settings.currency, stage),
-      null,
     )
   })
 }
 
 /**
- * Ціна змінилась між двома постами. На відміну від ціни в оголошенні, тут є
- * автор дії — той, хто переслав, — тому діє звичне правило «пишемо іншому».
- */
-export async function notifyPostPrice(
-  listing: Listing,
-  actor: Author,
-  change: { oldPrice: number; newPrice: number },
-): Promise<void> {
-  await safely('ціна з поста', async () => {
-    const to = await recipient(otherAuthor(actor), 'price')
-    if (!to) return
-
-    await deliver(to, listing.id, priceMessage(listing, to.settings.currency, change), null)
-  })
-}
-
-/**
- * Зміна ціни в оголошенні. Єдиний випадок, коли пишемо **обом**: діяв не
- * користувач, а продавець, і «автора дії», якого треба обійти, тут немає.
+ * Зміна ціни — і в оголошенні, і між двома постами. Автора дії тут немає взагалі:
+ * ціну рухав продавець, а ми обидва лише дізнаємось про це.
  */
 export async function notifyPriceChange(
   listing: Listing,
   change: { oldPrice: number; newPrice: number },
 ): Promise<void> {
   await safely('зміна ціни', async () => {
-    for (const author of ['me', 'dad'] as const) {
-      const to = await recipient(author, 'price')
-      if (!to) continue
+    await broadcast('зміна ціни', 'price', listing, (to) =>
+      priceMessage(listing, to.settings.currency, change),
+    )
+  })
+}
 
-      await deliver(to, listing.id, priceMessage(listing, to.settings.currency, change), null)
-    }
+/**
+ * Оголошення зникло з майданчика — найімовірніше, авто продали. Повідомлення
+ * шлеться один раз, у мить переходу в `removed`: далі цю картку крон уже не
+ * перечитує, і другого такого разу не буде.
+ */
+export async function notifyRemoved(listing: Listing): Promise<void> {
+  await safely('зняте оголошення', async () => {
+    await broadcast('зняте оголошення', 'removed', listing, (to) =>
+      removedMessage(listing, to.settings.currency),
+    )
   })
 }

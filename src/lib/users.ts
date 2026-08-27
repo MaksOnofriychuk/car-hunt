@@ -16,8 +16,3 @@ export function userNames(): Record<Author, string> {
     dad: process.env.USER_DAD_NAME || 'Батько',
   }
 }
-
-/** Хто дивиться → як підписати іншого. */
-export function otherAuthor(author: Author): Author {
-  return author === 'me' ? 'dad' : 'me'
-}

@@ -15,7 +15,7 @@ import { STAGE_LABELS, type Stage } from '@/lib/stages'
  */
 
 /** Що саме сталось. Від типу залежить і значок, і перемикач у налаштуваннях. */
-export type NotificationKind = 'new' | 'call' | 'comment' | 'stage' | 'price'
+export type NotificationKind = 'new' | 'call' | 'comment' | 'stage' | 'price' | 'removed'
 
 const ICONS: Record<NotificationKind, string> = {
   new: '🚗',
@@ -23,6 +23,7 @@ const ICONS: Record<NotificationKind, string> = {
   comment: '💬',
   stage: '📌',
   price: '💸',
+  removed: '🏁',
 }
 
 /** Розмітка в назвах авто трапляється: «Passat B7 <2.0 TDI>» зламав би HTML. */
@@ -162,6 +163,25 @@ export function priceMessage(
       down ? '−' : '+'
     }$${formatNumber(delta)})`,
     specs || null,
+    `<a href="${listingUrl(listing.id)}">картка</a>`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+/**
+ * Оголошення зникло з майданчика. Найчастіше це продаж — але буває і зняття «до
+ * весни», тому в тексті «зняли», а не «продали»: стверджувати те, чого ми не
+ * бачили, повідомлення не має. Ціна тут остання відома, і це важливо: картка
+ * лишається в архіві назавжди, і саме за цією ціною авто зійшло з дистанції.
+ */
+export function removedMessage(listing: Listing, currency: Currency): string {
+  const { title, specs, price } = head(listing, currency)
+
+  return [
+    `${ICONS.removed} <b>${title}</b> — оголошення зняли`,
+    specs || null,
+    `Схоже, продали. Остання ціна <b>${price}</b>`,
     `<a href="${listingUrl(listing.id)}">картка</a>`,
   ]
     .filter(Boolean)

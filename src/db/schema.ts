@@ -252,6 +252,8 @@ export const userSettings = pgTable('user_settings', {
   notifyComment: boolean('notify_comment').notNull().default(true),
   notifyPrice: boolean('notify_price').notNull().default(true),
   notifyStage: boolean('notify_stage').notNull().default(true),
+  /** Оголошення зникло з майданчика — найчастіше це продаж. */
+  notifyRemoved: boolean('notify_removed').notNull().default(true),
   /** HH:MM за Києвом. */
   digestAt: text('digest_at').notNull().default('08:00'),
   quietFrom: text('quiet_from').notNull().default('22:00'),

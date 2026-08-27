@@ -46,6 +46,8 @@ export type Settings = {
   notifyComment: boolean
   notifyPrice: boolean
   notifyStage: boolean
+  /** Оголошення зникло з майданчика — найчастіше це продаж. */
+  notifyRemoved: boolean
   /** Час ранкового зведення, HH:MM за Києвом. */
   digestAt: string
   quietFrom: string
@@ -61,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notifyComment: true,
   notifyPrice: true,
   notifyStage: true,
+  notifyRemoved: true,
   digestAt: '08:00',
   quietFrom: '22:00',
   quietTo: '08:00',

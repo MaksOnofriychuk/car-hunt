@@ -35,6 +35,7 @@ export async function getSettings(author: Author): Promise<Settings> {
     notifyComment: row.notifyComment,
     notifyPrice: row.notifyPrice,
     notifyStage: row.notifyStage,
+    notifyRemoved: row.notifyRemoved,
     digestAt: row.digestAt,
     quietFrom: row.quietFrom,
     quietTo: row.quietTo,
