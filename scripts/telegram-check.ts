@@ -82,7 +82,9 @@ async function main(): Promise<void> {
       true,
       `${names[author]} (${chatId}): нові ${flag(settings.notifyNew)}, розмови ${flag(
         settings.notifyComment,
-      )}, ціни ${flag(settings.notifyPrice)}, етапи ${flag(settings.notifyStage)}` +
+      )}, ціни ${flag(settings.notifyPrice)}, етапи ${flag(settings.notifyStage)}, зняті ${flag(
+        settings.notifyRemoved,
+      )}` +
         ` · зараз ${timeInKyiv()}, тихі години ${settings.quietFrom}–${settings.quietTo}` +
         ` → ${quiet ? 'без звуку' : 'зі звуком'}`,
     )
