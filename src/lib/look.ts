@@ -1,11 +1,16 @@
 /**
  * Вигляд інтерфейсу: тема, розмір, шрифт, щільність.
  *
- * Живе в cookie, а не в базі: у кожного свій пристрій і свої очі. Батько
+ * Живе на пристрої, а не в базі: у кожного свій пристрій і свої очі. Батько
  * дивиться з телефона більшим шрифтом, я — з компʼютера меншим, і синхронізувати
- * це між ними було б не послугою, а шкодою. Сервер читає cookie при рендері й
- * одразу малює потрібне — інакше сторінка блимала б світлою темою перед темною.
+ * це між ними було б не послугою, а шкодою.
+ *
+ * Сховище — `localStorage` із дзеркалом у cookie (`src/lib/device-store.ts`):
+ * сервер читає значення при рендері й одразу малює потрібне, інакше сторінка
+ * блимала б світлою темою перед темною.
  */
+
+import { writeDevice } from './device-store'
 
 export const THEMES = ['dark', 'light'] as const
 export type Theme = (typeof THEMES)[number]
@@ -68,7 +73,6 @@ export type Look = {
 }
 
 export const LOOK_COOKIE = 'car_hunt_look'
-export const LOOK_MAX_AGE = 365 * 24 * 60 * 60
 
 export const DEFAULT_LOOK: Look = {
   // Темна — основна тема системи, а не наслідок системних налаштувань.
@@ -102,8 +106,7 @@ export function parseLook(raw: string | undefined): Look {
 }
 
 export function writeLook(look: Look): void {
-  const value = encodeURIComponent(JSON.stringify(look))
-  document.cookie = `${LOOK_COOKIE}=${value}; path=/; max-age=${LOOK_MAX_AGE}; samesite=lax`
+  writeDevice(LOOK_COOKIE, encodeURIComponent(JSON.stringify(look)))
 }
 
 /** Класи щільності для списку і таблиці — щоб не тримати їх у трьох місцях. */

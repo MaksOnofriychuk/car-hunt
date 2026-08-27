@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from 'next'
+import { Suspense } from 'react'
 import { Fira_Sans, IBM_Plex_Mono, IBM_Plex_Sans, Inter, Rubik } from 'next/font/google'
 import { cookies } from 'next/headers'
 
 import './globals.css'
 
+import { TopProgress } from '@/components/TopProgress'
+
+import { DEVICE_BOOTSTRAP } from '@/lib/device-store'
 import { LOOK_COOKIE, parseLook } from '@/lib/look'
 
 /**
@@ -92,7 +96,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-font={look.font}
       data-density={look.density}
     >
-      <body>{children}</body>
+      <head>
+        {/* Відновлення cookie з localStorage — до першого малювання, інакше
+            сервер уже намалював би вхід замість черги. `beforeInteractive`
+            тут не підходить: він теж чекає на гідратацію. */}
+        <script dangerouslySetInnerHTML={{ __html: DEVICE_BOOTSTRAP }} />
+      </head>
+      <body>
+        {/* `useSearchParams` усередині вимагає межі Suspense — інакше збірка
+            статичних сторінок (наприклад 404) на ній спіткнеться. */}
+        <Suspense fallback={null}>
+          <TopProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   )
 }

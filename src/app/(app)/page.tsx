@@ -9,6 +9,7 @@ import { PasteBar } from '@/components/PasteBar'
 import { PendingPoller } from '@/components/PendingPoller'
 import { PerPageBar } from '@/components/PerPageBar'
 import { PresetBar } from '@/components/PresetBar'
+import { RefreshQueue } from '@/components/RefreshQueue'
 import { ViewToggle } from '@/components/ViewToggle'
 import { bucketByContact, getListings, listCities, type ListingRow } from '@/db/list'
 import { listPresets } from '@/db/presets'
@@ -30,6 +31,13 @@ import { userNames } from '@/lib/users'
 import { parseViewPrefs, VIEW_COOKIE } from '@/lib/view-prefs'
 
 export const metadata = { title: 'Черга' }
+
+/**
+ * Кнопка «Оновити чергу» ходить на майданчики просто в серверній дії, а її
+ * тривалість обмежує саме цей сегмент. Межі самого прогону вужчі (20 с), тож
+ * запас тут — на мережу, яка може відповідати повільно.
+ */
+export const maxDuration = 60
 
 /** Куди дивиться кожне сортування за замовчуванням, щоб не питати про це двічі. */
 const DEFAULT_DIRECTION = {
@@ -140,6 +148,10 @@ export default async function QueuePage({
 
         <PasteBar />
         <PendingPoller ids={pending} />
+
+        {/* Оновлення на вимогу — поруч зі вставкою посилання: обидві дії про
+            те, щоб у черзі було свіже, і шукати їх у різних кутках безглуздо. */}
+        <RefreshQueue />
         <PresetBar
           presets={saved}
           builtIn={builtInPresets(settings.longStandingDays)}

@@ -541,6 +541,48 @@
     border-radius: var(--radius-chip);
     animation: skeleton 1400ms var(--ease-out) infinite;
   }
+
+  /*
+   * Смуга «щось відбувається» — волосінь угорі екрана. Не тінь і не спінер
+   * посеред контенту: сторінка лишається на місці, світиться лише край, як і
+   * решта глибини в системі.
+   */
+  .progress-top {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 60;
+    height: 2px;
+    overflow: hidden;
+    background-color: color-mix(in oklab, var(--color-accent) 18%, transparent);
+    pointer-events: none;
+  }
+
+  .progress-top::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inline-size: 45%;
+    border-radius: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-accent-lit),
+      color-mix(in oklab, var(--color-accent-lit) 60%, transparent)
+    );
+    /* Сяйво, а не drop-shadow: тіней у системі немає. */
+    box-shadow: 0 0 12px color-mix(in oklab, var(--color-accent-lit) 70%, transparent);
+    animation: progress-slide 1100ms var(--ease-inout) infinite;
+  }
+}
+
+@keyframes progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(320%);
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -685,6 +727,7 @@
 
   .card-in,
   .panel-in,
+  .progress-top::after,
   .skeleton,
   .digit-in,
   .digit-out {

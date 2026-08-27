@@ -1,41 +1,33 @@
 import { isAuthor, type Author } from './users'
 
 /**
- * Підписаний httpOnly cookie на рік. Web Crypto, а не node:crypto, бо цей
- * модуль підключає middleware, а він живе в Edge-рантаймі.
+ * Підпис і перевірка сесії. Web Crypto, а не node:crypto, бо цей модуль
+ * підключає middleware, а він живе в Edge-рантаймі.
+ *
+ * Сам токен сервер нікуди не кладе: сесія живе на пристрої в `localStorage`, а
+ * в запит потрапляє дзеркальною cookie з тим самим імʼям
+ * (`src/lib/device-store.ts`). Тут лишається рівно те, що вміє тільки сервер, —
+ * підписати автора і перевірити підпис.
+ *
+ * Через це токен читабельний для JS сторінки. Плата свідома: cookie на iPhone
+ * зникала швидше, ніж `localStorage`, і людину викидало на вхід. Ціна підробки
+ * не змінилась — без `SESSION_SECRET` підпис не зібрати, а секрет лишився на
+ * сервері.
  */
 
 export const SESSION_COOKIE = 'car_hunt_session'
 export const SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
-
-export const sessionCookieOptions = {
-  httpOnly: true,
-  // На бойовому завжди https. У dev лишаємо false, інакше cookie не поставиться
-  // при перевірці з телефона по http://192.168.x.x — а застосунок мобільний-first.
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  path: '/',
-  maxAge: SESSION_MAX_AGE_SECONDS,
-} as const
 
 /**
  * Хто востаннє заходив із цього пристрою. Живе окремо від сесії й переживає
  * «вийти»: на екрані входу лишається вибраним той самий, і після виходу
  * достатньо ввести пароль.
  *
- * Не httpOnly і нічого не підписує — це підказка формі, а не облікові дані:
- * підмінити її означає лише обрати іншого зі списку, що й так доступний
- * кнопкою. Сесію все одно видає лише правильний пароль.
+ * Нічого не підписує — це підказка формі, а не облікові дані: підмінити її
+ * означає лише обрати іншого зі списку, що й так доступний кнопкою. Сесію все
+ * одно видає лише правильний пароль.
  */
 export const LAST_AUTHOR_COOKIE = 'car_hunt_author'
-
-export const lastAuthorCookieOptions = {
-  httpOnly: false,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: SESSION_MAX_AGE_SECONDS,
-} as const
 
 const encoder = new TextEncoder()
 let cachedKey: Promise<CryptoKey> | null = null

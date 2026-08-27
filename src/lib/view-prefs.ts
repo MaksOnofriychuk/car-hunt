@@ -1,11 +1,14 @@
 /**
  * Як показувати чергу: списком чи таблицею, і які колонки в таблиці.
  *
- * Живе в cookie, а не в localStorage: сервер читає її при рендері й одразу
- * малює потрібне — інакше на кожному відкритті блимав би список, а вже потім
+ * Живе на пристрої — `localStorage` із дзеркалом у cookie
+ * (`src/lib/device-store.ts`): сервер читає значення при рендері й одразу малює
+ * потрібне, інакше на кожному відкритті блимав би список, а вже потім
  * зʼявлялась таблиця. І це правильно на пристрій, а не на користувача: на
  * телефоні список, на компʼютері таблиця.
  */
+
+import { writeDevice } from './device-store'
 
 export const COLUMN_IDS = [
   'photo',
@@ -52,9 +55,6 @@ export type ViewPrefs = {
 
 export const VIEW_COOKIE = 'car_hunt_view'
 
-/** Рік: налаштування вигляду не з тих речей, які варто питати щомісяця. */
-export const VIEW_COOKIE_MAX_AGE = 365 * 24 * 60 * 60
-
 export const DEFAULT_PREFS: ViewPrefs = {
   mode: 'list',
   order: [...COLUMN_IDS],
@@ -91,9 +91,9 @@ export function serializeViewPrefs(prefs: ViewPrefs): string {
   return encodeURIComponent(JSON.stringify(prefs))
 }
 
-/** Записати з клієнта. Сервер прочитає її вже на наступному рендері. */
+/** Записати з клієнта. Сервер прочитає це вже на наступному рендері. */
 export function writeViewPrefs(prefs: ViewPrefs): void {
-  document.cookie = `${VIEW_COOKIE}=${serializeViewPrefs(prefs)}; path=/; max-age=${VIEW_COOKIE_MAX_AGE}; samesite=lax`
+  writeDevice(VIEW_COOKIE, serializeViewPrefs(prefs))
 }
 
 /** Видимі колонки в потрібному порядку. */

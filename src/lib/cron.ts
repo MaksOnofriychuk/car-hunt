@@ -67,7 +67,15 @@ export type RefreshReport = {
   cleaned: { inbox: number; logins: number }
 }
 
-export async function runRefresh(): Promise<RefreshReport> {
+/**
+ * Межі одного прогону. Кнопка «Оновити чергу» бере вужчі за крон: людина
+ * стоїть і дивиться на екран, і півхвилини очікування там читаються інакше, ніж
+ * у фоновій задачі. Те, що не влізло, добере наступний прогін — крон і кнопка
+ * ходять по одній черзі й продовжують з того ж місця.
+ */
+export type RunLimits = { requests?: number; ms?: number }
+
+export async function runRefresh(limits: RunLimits = {}): Promise<RefreshReport> {
   const report: RefreshReport = {
     parsed: 0,
     archived: 0,
@@ -78,8 +86,8 @@ export async function runRefresh(): Promise<RefreshReport> {
     cleaned: { inbox: 0, logins: 0 },
   }
 
-  let budget = REQUEST_BUDGET
-  const deadline = Date.now() + RUN_BUDGET_MS
+  let budget = limits.requests ?? REQUEST_BUDGET
+  const deadline = Date.now() + (limits.ms ?? RUN_BUDGET_MS)
   const outOfTime = () => Date.now() > deadline
 
   // 1. Пріоритет перший: картки, які так і не розібрались.

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useActionState } from 'react'
 
 import { login, type LoginState } from './actions'
 import { cn } from '@/lib/cn'
+import { writeDevice } from '@/lib/device-store'
 import type { Author } from '@/lib/users'
 
 const initialState: LoginState = { error: null }
@@ -25,9 +26,39 @@ export function LoginForm({
 }) {
   const [state, formAction, pending] = useActionState(login, initialState)
   const [author, setAuthor] = useState<Author | null>(lastAuthor)
+
+  /**
+   * Пароль зійшовся — сервер віддав токен, але нікуди його не поклав. Кладемо
+   * самі: сесія живе в `localStorage`, звідки її дістає скрипт із `<head>`.
+   *
+   * Далі — `location.replace`, а не `router.push`: перехід має піти новим
+   * запитом, у якому вже поїде щойно записана cookie. Клієнтська навігація
+   * лишила б сервер із думкою, що ми досі неавторизовані.
+   */
+  useEffect(() => {
+    if (!state.token || !state.author) return
+
+    writeDevice('car_hunt_session', state.token)
+    // Хто заходив із цього пристрою — підказка формі на наступний раз. Це не
+    // облікові дані: сама по собі вона нікуди не пускає.
+    writeDevice('car_hunt_author', state.author)
+    // Новий вхід знімає позначку «сесію вже відновлювали» з попереднього.
+    try {
+      window.sessionStorage.removeItem('ch_restored')
+    } catch {
+      // Приватний режим — не біда, позначка й так одноразова.
+    }
+
+    window.location.replace(state.next ?? '/')
+  }, [state.token, state.author, state.next])
+
+  // Пароль зійшовся — форма вже не потрібна: чекаємо на перехід, а не
+  // пропонуємо ввести пароль ще раз.
+  const leaving = Boolean(state.token)
+
   // Після досягнення ліміту наступний POST зустріне 429 у middleware,
   // а відповідь у форматі 429 зламала б серверну дію на клієнті. Тому замикаємо тут.
-  const disabled = pending || state.blocked === true
+  const disabled = pending || leaving || state.blocked === true
 
   return (
     <form action={formAction} className="space-y-5">
@@ -79,7 +110,7 @@ export function LoginForm({
         disabled={disabled || author === null}
         className="btn btn-accent tap w-full"
       >
-        {pending ? 'Заходжу…' : 'Увійти'}
+        {pending || leaving ? 'Заходжу…' : 'Увійти'}
       </button>
 
       {state.error ? (

@@ -8,6 +8,7 @@ import { createPreset, removePreset } from '@/db/presets'
 import { setSellerNotes } from '@/db/sellers'
 import { saveSettings } from '@/db/settings'
 import { requireAuthor } from '@/lib/auth'
+import { runRefresh } from '@/lib/cron'
 import type { FormState } from '@/lib/forms'
 import { CURRENCIES, DEFAULT_SORTS, isTime } from '@/lib/settings'
 
@@ -146,4 +147,42 @@ export async function cleanupArchivedPhotos(_prev: FormState, formData: FormData
 
   if (removed === 0) return { error: 'Нічого прибирати: таких авто немає', ok: false }
   return { error: null, ok: true }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Оновлення черги руками                                                     */
+/* -------------------------------------------------------------------------- */
+
+export type RefreshState = {
+  error: string | null
+  /** Що саме встиг зробити прогін — щоб кнопка сказала це людськими словами. */
+  done?: { parsed: number; refreshed: number; archived: number }
+}
+
+/**
+ * Той самий прогін, що й погодинний крон, тільки на вимогу: сходити на
+ * майданчики, перечитати ціни, дозібрати архів, добрати те, що не розпарсилось.
+ *
+ * Межі вужчі за кронові: людина стоїть і дивиться на екран. Що не влізло —
+ * добере наступний прогін, крон і кнопка йдуть по одній черзі.
+ */
+export async function refreshQueue(): Promise<RefreshState> {
+  await requireAuthor()
+
+  try {
+    const report = await runRefresh({ requests: 12, ms: 20_000 })
+    revalidatePath('/')
+
+    return {
+      error: null,
+      done: {
+        parsed: report.parsed,
+        refreshed: report.refreshed,
+        archived: report.archived,
+      },
+    }
+  } catch (error) {
+    console.error('[refresh] прогін на вимогу впав:', error)
+    return { error: 'Не вийшло оновити. Спробуй ще раз.' }
+  }
 }

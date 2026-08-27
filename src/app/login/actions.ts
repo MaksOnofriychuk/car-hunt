@@ -1,20 +1,12 @@
 'use server'
 
-import { cookies, headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { z } from 'zod'
 
 import { loginBlockFor, recordLoginAttempt } from '@/db/login-attempts'
 import { clientIp } from '@/lib/request-ip'
-import {
-  LAST_AUTHOR_COOKIE,
-  SESSION_COOKIE,
-  createSessionToken,
-  lastAuthorCookieOptions,
-  passwordMatches,
-  sessionCookieOptions,
-} from '@/lib/session'
-import { AUTHOR_VALUES, isAuthor } from '@/lib/users'
+import { createSessionToken, passwordMatches } from '@/lib/session'
+import { AUTHOR_VALUES, isAuthor, type Author } from '@/lib/users'
 
 /**
  * Одне повідомлення на всі причини відмови. Ні «нема такого користувача»,
@@ -33,6 +25,14 @@ export type LoginState = {
   /** Досягнуто ліміту: форму треба заблокувати, щоб наступний POST не впав у 429. */
   blocked?: boolean
   retryAfterSeconds?: number
+  /**
+   * Підписаний токен сесії. Сервер його **не зберігає**: сесія живе на
+   * пристрої в `localStorage`, і покласти її туди може лише клієнт. Форма
+   * забирає токен звідси і сама вирішує, куди йти далі.
+   */
+  token?: string
+  author?: Author
+  next?: string
 }
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -69,19 +69,14 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     }
   }
 
-  const store = await cookies()
-  store.set(SESSION_COOKIE, await createSessionToken(parsed.data!.author), sessionCookieOptions)
-  // Хто заходив із цього пристрою — щоб наступного разу не вибирати себе знову.
-  // Це не автентифікація, а підказка формі: сама по собі вона нікуди не пускає.
-  store.set(LAST_AUTHOR_COOKIE, parsed.data!.author, lastAuthorCookieOptions)
-
   // Тільки внутрішні шляхи, щоб ?next= не став відкритим редиректом.
   const target = parsed.data!.next
-  redirect(target && target.startsWith('/') && !target.startsWith('//') ? target : '/')
-}
+  const safe = target && target.startsWith('/') && !target.startsWith('//') ? target : '/'
 
-export async function logout() {
-  const store = await cookies()
-  store.delete(SESSION_COOKIE)
-  redirect('/login')
+  return {
+    error: null,
+    token: await createSessionToken(parsed.data!.author),
+    author: parsed.data!.author,
+    next: safe,
+  }
 }

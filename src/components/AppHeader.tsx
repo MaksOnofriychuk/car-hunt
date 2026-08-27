@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation'
 import { PlateStrip } from './PlateStrip'
 import { ThemeToggle } from './ThemeToggle'
 
-import { logout } from '@/app/login/actions'
 import { cn } from '@/lib/cn'
+import { forgetDevice } from '@/lib/device-store'
 import type { Look } from '@/lib/look'
 
 /**
@@ -21,6 +21,15 @@ const NAV = [
   { href: '/sellers', label: 'Продавці' },
   { href: '/settings', label: 'Налаштування' },
 ]
+
+/**
+ * Вийти — робота клієнта, а не серверної дії: сесія лежить у `localStorage`, і
+ * прибрати її звідти може лише той, у кого це сховище є.
+ */
+function logout(): void {
+  forgetDevice('car_hunt_session')
+  window.location.replace('/login')
+}
 
 export function AppHeader({ name, look }: { name: string; look: Look }) {
   const pathname = usePathname()
@@ -55,9 +64,10 @@ export function AppHeader({ name, look }: { name: string; look: Look }) {
 
         <ThemeToggle look={look} />
 
-        <form action={logout} className="shrink-0">
+        <div className="shrink-0">
           <button
-            type="submit"
+            type="button"
+            onClick={logout}
             title={`Вийти — ${name}`}
             aria-label={`Вийти — ${name}`}
             className="surface flex h-9 w-9 items-center justify-center rounded-control text-muted transition-colors duration-(--t-instant) hover:text-ink"
@@ -72,7 +82,7 @@ export function AppHeader({ name, look }: { name: string; look: Look }) {
               />
             </svg>
           </button>
-        </form>
+        </div>
       </div>
     </header>
   )
